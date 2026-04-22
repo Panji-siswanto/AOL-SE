@@ -13,7 +13,7 @@ return new class extends Migration
         Schema::create('statuses', function (Blueprint $table) {
             $table->id();
             $table->string('context', 100); // e.g: 'registration', 'spaces', 'rent'
-            $table->string('code', 50);
+            $table->string('code', 50)->unique();
             $table->string('name', 100);
             $table->timestamps();
         });
