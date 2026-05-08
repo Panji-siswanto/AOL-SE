@@ -4,12 +4,13 @@ namespace App\Models;
 
 use App\Models\RegistrationLog;
 use App\Models\Space;
+use App\Traits\Searchable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class SpaceRegistration extends Model
 {
-    use HasFactory;
+    use HasFactory, Searchable;
 
     protected $fillable = [
         'owner_id',
@@ -22,32 +23,23 @@ class SpaceRegistration extends Model
     ];
 
     // belongs to user (owner)
-    public function owner()
-    {
+    public function owner(){
         return $this->belongsTo(User::class, 'owner_id');
     }
-
     // belongs to location
-    public function location()
-    {
+    public function location(){
         return $this->belongsTo(Location::class);
     }
-
     // belongs to status
-    public function status()
-    {
+    public function status(){
         return $this->belongsTo(Status::class);
     }
-
     // one registration becomes one space
-    public function space()
-    {
+    public function space(){
         return $this->hasOne(Space::class, 'registration_id');
     }
-
     // logs
-    public function logs()
-    {
+    public function logs(){
         return $this->hasMany(RegistrationLog::class, 'registration_id');
     }
 }
