@@ -14,9 +14,11 @@ trait Searchable
                       $ownerQuery->where('name', 'like', "%{$term}%");
                   })
                   ->orWhereHas('location', function($locationQuery) use ($term) {
-                      $locationQuery->where('city', 'like', "%{$term}%")
-                                    ->orWhere('province', 'like', "%{$term}%");
-                  });
+                        $locationQuery->where('city', 'like', "%{$term}%")
+                                    ->orWhere('province', 'like', "%{$term}%")
+                                    ->orWhere('address', 'like', "%{$term}%"); 
+
+                    });
             });
         }
     }

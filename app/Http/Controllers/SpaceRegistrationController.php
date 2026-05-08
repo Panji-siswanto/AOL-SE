@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Http\Controllers\Renter;
+namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\StoreSpaceRegistrationRequest;
+use App\Http\Requests\Owner\StoreSpaceRegistrationRequest;
 use App\Models\Location;
 use App\Models\SpaceRegistration;
 use App\Models\Status;
@@ -12,11 +12,9 @@ use Illuminate\Support\Facades\DB;
 
 class SpaceRegistrationController extends Controller
 {
-    public function index(Request $request)
-    {
-        //Start the query, locked ONLY to the current user (ID 1 for Postman testing)
+    public function index(Request $request){
         $query = SpaceRegistration::with(['location', 'status'])
-            ->where('owner_id', 1); // hardcoded for testing, Change to auth()->id later
+            ->where('owner_id', auth()->id); 
 
         // apply filter if user provide status (e.g., ?status=reg_approved)
         if ($request->filled('status')) {
@@ -40,13 +38,19 @@ class SpaceRegistrationController extends Controller
             ]);
         }
 
-        return view('register-space.index', compact('registrations'));
+        return view('space-registration.index', compact('registrations'));
+    }
+
+    public function create(){
+        
+        return view('space-registration.create');
+
     }
 
     public function show(Request $request, $id)
     {
         $registration = SpaceRegistration::with(['location', 'status'])
-            ->where('owner_id', 1) // hardcoded for testing, Change to auth()->id later
+            ->where('owner_id', auth()->id) 
             ->findOrFail($id);
 
         if ($request->wantsJson()) {
@@ -56,16 +60,11 @@ class SpaceRegistrationController extends Controller
             ]);
         }
 
-        // Future UI view
-        return view('renter.register-space.show', compact('registration'));
+        // return view('space-registration.show', compact('registration'));
     }
 
     public function store(StoreSpaceRegistrationRequest $request){
         // get status
-        $pendingStatus = Status::where('context', 'registration')
-            ->where('code', 'reg_pending')
-            ->firstOrFail();
-
         DB::beginTransaction();
 
         try {
@@ -78,15 +77,15 @@ class SpaceRegistrationController extends Controller
                 'longitude' => $request->longitude,
             ]);
 
-            // 3. Create reg record
+            // Create reg record
             $registration = SpaceRegistration::create([
-                'owner_id' => 1, //nanti di ganti "auth()->id", masih testing pake postman jadi static dulu
+                'owner_id' => auth()->id, 
                 'location_id' => $location->id,
                 'name' => $request->name,
                 'description' => $request->description,
                 'size' => $request->size,
                 'price' => $request->price,
-                'status_id' => $pendingStatus->id,
+                'status_id' => Status::REG_PENDING,
             ]);
 
             DB::commit();

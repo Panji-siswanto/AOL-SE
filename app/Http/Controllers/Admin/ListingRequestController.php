@@ -13,25 +13,15 @@ use Illuminate\Support\Facades\DB;
 
 class ListingRequestController extends Controller{
 
-    public function index(Request $request) {
-
+  public function index(Request $request)
+    {
         $requests = SpaceRegistration::with(['location', 'status', 'owner'])
-            ->search($request->search)           // Uses scopeSearch()
-            ->withStatus($request->status)       // Uses scopeWithStatus()
-            
-            //apply filter here
+            ->where('status_id', Status::REG_PENDING)
+            ->search($request->search)
             ->when($request->sort_price, function ($query, $direction) {
-                // e.g., ?sort_price=asc
                 $query->orderBy('price', $direction);
             })
-            ->when($request->sort_date, function ($query, $direction) {
-                // e.g., ?sort_date=oldest
-                $direction = $direction === 'oldest' ? 'asc' : 'desc';
-                $query->orderBy('created_at', $direction);
-            },
-            function ($query) {
-                $query->latest(); 
-            })
+            ->latest()
             ->get();
 
         if ($request->wantsJson()) {
@@ -53,17 +43,10 @@ class ListingRequestController extends Controller{
     }
 
     public function approve(Request $request, SpaceRegistration $registration){
-        $request->validate([
-            'note' => 'required|string'
-        ]);
-
-        $approvedRegStatus = Status::where('context', 'registration')->where('code', 'reg_approved')->firstOrFail();
-        $availableSpaceStatus = Status::where('context', 'spaces')->where('code', 'spc_available')->firstOrFail();
 
         DB::beginTransaction();
-
         try {
-            $registration->update(['status_id' => $approvedRegStatus->id]);
+            $registration->update(['status_id' => Status::REG_APPROVED]);
 
             $space = Space::create([
                 'owner_id' => $registration->owner_id,
@@ -73,7 +56,7 @@ class ListingRequestController extends Controller{
                 'description' => $registration->description,
                 'size' => $registration->size,
                 'price' => $registration->price,
-                'status_id' => $availableSpaceStatus->id,
+                'status_id' => Status::SPC_AVAILABLE,
             ]);
 
             $user = User::findOrFail($registration->owner_id);
@@ -83,7 +66,7 @@ class ListingRequestController extends Controller{
 
             RegistrationLog::create([
                 'registration_id' => $registration->id,
-                'admin_id' => 1, //hardcoded for testing
+                'admin_id' => auth()->id,
                 'note' => $request->note,
             ]);
 
@@ -102,19 +85,13 @@ class ListingRequestController extends Controller{
     }
 
     public function reject(Request $request, SpaceRegistration $registration){
-
-        $request->validate([
-            'note' => 'required|string'
-        ]);
-
-        $rejectedRegStatus = Status::where('context', 'registration')->where('code', 'reg_rejected')->firstOrFail();
         DB::beginTransaction();
 
         try {
-            $registration->update(['status_id' => $rejectedRegStatus->id]);
+            $registration->update(['status_id' => Status::REG_REJECTED]);
             RegistrationLog::create([
                 'registration_id' => $registration->id,
-                'admin_id' => 1, //hardcoed for testing
+                'admin_id' => auth()->id,
                 'note' => $request->note, 
             ]);
 

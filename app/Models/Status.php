@@ -19,6 +19,26 @@ class Status extends Model
         'name',
     ];
 
+    // Registration Statuses
+    public const REG_PENDING = 1;
+    public const REG_APPROVED = 2;
+    public const REG_REJECTED = 3;
+
+    // Space Statuses
+    public const SPC_AVAILABLE = 4;
+    public const SPC_UNAVAILABLE = 5;
+
+    // Rent Request Statuses
+    public const RNT_REQ_PENDING = 6;
+    public const RNT_REQ_ACCEPTED = 7;
+    public const RNT_REQ_REJECTED = 8;
+    public const RNT_REQ_CANCELLED = 9;
+
+    // Rent Statuses
+    public const RNT_ONGOING = 10;
+    public const RNT_COMPLETED = 11;
+    public const RNT_CANCELLED = 12;
+
     // relationships (we keep it minimal first)
     public function spaces()
     {

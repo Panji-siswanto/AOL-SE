@@ -4,13 +4,14 @@ namespace App\Models;
 
 use App\Models\RegistrationLog;
 use App\Models\Space;
+use App\Traits\Filterable;
 use App\Traits\Searchable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class SpaceRegistration extends Model
 {
-    use HasFactory, Searchable;
+    use HasFactory, Searchable, Filterable;
 
     protected $fillable = [
         'owner_id',

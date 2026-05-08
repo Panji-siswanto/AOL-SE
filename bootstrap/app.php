@@ -16,13 +16,11 @@ return Application::configure(basePath: dirname(__DIR__))
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
         ]);
-        //delete this line
-        $middleware->validateCsrfTokens(except: [
-            'space-registrations',
-            'admin/listing-requests/*'
-        ]);
-        //until this line
-        //exception for api testing
+        // $middleware->validateCsrfTokens(except: [
+        //     'space-registrations',
+        //     'admin/listing-requests/*'
+        // ]);
+       
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         
