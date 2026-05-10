@@ -23,6 +23,7 @@ use Spatie\Permission\Traits\HasRoles;
     'phone',
     'password',])]
 #[Hidden(['password', 'remember_token'])]
+
 class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
@@ -70,7 +71,13 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(RegistrationLog::class, 'admin_id');
     }
 
-
+    /**
+     * Get all verification documents uploaded by the user.
+     */
+    public function documents()
+    {
+        return $this->hasMany(UserDocument::class);
+    }
 
 
     /**

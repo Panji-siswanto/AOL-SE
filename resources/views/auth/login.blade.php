@@ -5,7 +5,7 @@
     <form method="POST" action="{{ route('login') }}">
         @csrf
 
-        <!-- Email Address -->
+        <!-- Email Address/Username -->
         <div>
             <x-input-label for="auth_id" :value="__('Email Or Username')" />
             <x-text-input id="auth_id" class="block mt-1 w-full" type="text" name="auth_id" :value="old('auth_id')" required autofocus autocomplete="auth_id" />

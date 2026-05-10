@@ -43,4 +43,20 @@ class SpaceRegistration extends Model
     public function logs(){
         return $this->hasMany(RegistrationLog::class, 'registration_id');
     }
+
+    /**
+     * legal files for this registration request.
+     */
+    public function documents()
+    {
+        return $this->hasMany(SpaceDocument::class);
+    }
+
+    /**
+     * gallery photos uploaded during registration.
+     */
+    public function photos()
+    {
+        return $this->hasMany(SpacePhoto::class);
+    }
 }

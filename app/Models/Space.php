@@ -75,4 +75,9 @@ class Space extends Model
     {
         return $this->hasMany(Rent::class);
     }
+
+    public function photos()
+    {
+        return $this->hasMany(SpacePhoto::class);
+    }
 }
