@@ -32,9 +32,9 @@ class RegisteredUserController extends Controller
     {
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'username' => ['required', 'string', 'max:255','unique:users,username','alpha_num'],
+            'username' => ['required', 'string', 'max:255', 'unique:users,username', 'alpha_num'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
-            'phone' => ['required', 'string', 'max:20'],
+            'phone' => ['nullable', 'string', 'max:20'],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
@@ -45,12 +45,16 @@ class RegisteredUserController extends Controller
             'phone' => $request->phone,
             'password' => Hash::make($request->password),
         ]);
+
         $user->assignRole('renter');
 
+        // Trigger Laravel's native Registered event to dispatch the verification email
         event(new Registered($user));
 
+        // Authenticate the user session immediately
         Auth::login($user);
 
-        return redirect(route('dashboard', absolute: false));
+        // Explicitly route to the verification notice screen so the user sees the resend options natively
+        return redirect()->route('verification.notice');
     }
 }

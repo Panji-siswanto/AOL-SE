@@ -43,7 +43,7 @@ class UserSeeder extends Seeder
         }
 
         $this->command->info('Users seeded successfully!');
-        $this->command->line('👉 Admin: admin@lapak.in | PW: password123');
-        $this->command->line('👉 Renter: renter@lapak.in | PW: password123');
+        $this->command->line('Admin: admin@lapak.in | PW: pass123');
+        $this->command->line('Renter: renter@lapak.in | PW: pass123');
     }
 }

@@ -6,7 +6,6 @@ Add to status seeder and Model:
     public const USR_REJECTED = 16;        
 Update ERD and migrations on user table, add "verification_status_id" 
 Update SpaceRegistrationController to accomodate image Upload as filepath
-
 for first time Registration soon to be owner needs to Upload and verified their credentials (eg. ktp, id card)
 
 make userVerificationControlle for admin

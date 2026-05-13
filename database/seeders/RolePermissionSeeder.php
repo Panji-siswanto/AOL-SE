@@ -2,26 +2,20 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
+
 class RolePermissionSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
-
-
     public function run(): void
     {
-        // reset cache
+        // Reset cached roles and permissions
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
-        // permissions
+        // Complete list of system permissions
         $permissions = [
-
-            // registration
+            // space registration
             'submit space registration',
             'view own space registrations',
             'review space registrations',
@@ -57,20 +51,22 @@ class RolePermissionSeeder extends Seeder
         ];
 
         foreach ($permissions as $permission) {
-            Permission::create(['name' => $permission]);
+            Permission::firstOrCreate(['name' => $permission]);
         }
 
-        // roles
-        $admin = Role::create(['name' => 'admin']);
-        $owner = Role::create(['name' => 'owner']);
-        $renter = Role::create(['name' => 'renter']);
+        // Scaffold base roles
+        $admin = Role::firstOrCreate(['name' => 'admin']);
+        $owner = Role::firstOrCreate(['name' => 'owner']);
+        $renter = Role::firstOrCreate(['name' => 'renter']);
 
-        // assign permissions
+        // ==========================================
+        // ROLE-BASED ASSIGNMENTS
+        // ==========================================
 
-        // ADMIN → everything
+        // ADMIN → Full platform access
         $admin->givePermissionTo(Permission::all());
 
-        // OWNER
+        // OWNER → Full catalog management and rental fulfillment workflows
         $owner->givePermissionTo([
             'submit space registration',
             'view own space registrations',
@@ -81,17 +77,16 @@ class RolePermissionSeeder extends Seeder
             'manage own rents',
         ]);
 
-        // RENTER
+        // RENTER (Base State) → Strictly limited to space discovery and dashboard monitoring
+        // Sensitive writing actions are removed from this default group.
         $renter->givePermissionTo([
             'view spaces',
             'view space detail',
             'bookmark space',
             'remove bookmark',
             'view bookmarks',
-            'create rent request',
-            'view own rent requests',
-            'send proposal',
-            'send response',
+            'view own space registrations', // Allows viewing their pending application status
+            'view own rent requests',       // Allows tracking historical applications
             'view rents',
         ]);
     }

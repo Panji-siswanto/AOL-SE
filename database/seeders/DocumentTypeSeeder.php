@@ -7,37 +7,20 @@ use Illuminate\Database\Seeder;
 
 class DocumentTypeSeeder extends Seeder
 {
-    public function run(): void
-    {
+    public function run(): void{
+    
         $types = [
-            // User Identity Documents
-            [
-                'code' => 'ktp',
-                'name' => 'Kartu Tanda Penduduk (KTP)',
-                'context' => 'user',
-            ],
-            [
-                'code' => 'selfie_ktp',
-                'name' => 'Foto Selfie dengan KTP',
-                'context' => 'user',
-            ],
-
-            // Space Legal Documents
-            [
-                'code' => 'surat_tanah',
-                'name' => 'Surat Bukti Kepemilikan Tanah / Bangunan',
-                'context' => 'space',
-            ],
-            [
-                'code' => 'surat_izin',
-                'name' => 'Surat Izin Usaha / Keramaian',
-                'context' => 'space',
-            ],
-            [
-                'code' => 'perjanjian_sewa',
-                'name' => 'Surat Perjanjian Sewa (Jika pihak ketiga)',
-                'context' => 'space',
-            ],
+            // User Identity Document Types
+            ['context' => 'user_verification', 'code' => 'ktp', 'name' => 'Kartu Tanda Penduduk (KTP)'],
+            ['context' => 'user_verification', 'code' => 'selfie_ktp', 'name' => 'Foto Selfie dengan KTP'],
+            
+            // Future-proofing / Scalability Examples
+            ['context' => 'user_verification', 'code' => 'ktm', 'name' => 'Kartu Tanda Mahasiswa (KTM)'],
+            ['context' => 'user_verification', 'code' => 'siup', 'name' => 'Surat Izin Usaha Perdagangan (SIUP)'],
+            
+            // Space / Listing Document Types
+            ['context' => 'space_registration', 'code' => 'surat_tanah', 'name' => 'Sertifikat Hak Milik / Surat Izin Lahan'],
+            ['context' => 'space_registration', 'code' => 'perjanjian_sewa', 'name' => 'Surat Perjanjian Sewa Induk'],
         ];
 
         foreach ($types as $type) {

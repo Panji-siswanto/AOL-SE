@@ -39,6 +39,16 @@ class Status extends Model
     public const RNT_COMPLETED = 11;
     public const RNT_CANCELLED = 12;
 
+    // Message Statuses
+    public const MSG_PROPOSAL = 13;
+    public const MSG_RESPONSE = 14;
+
+    // User & Log Verification Statuses
+    public const USR_UNVERIFIED = 15;      
+    public const USR_VERIFY_PENDING = 16;   
+    public const USR_VERIFIED = 17;         
+    public const USR_REJECTED = 18;
+
     // relationships (we keep it minimal first)
     public function spaces()
     {

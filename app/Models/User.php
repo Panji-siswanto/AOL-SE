@@ -16,18 +16,21 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
+use Laravel\Sanctum\HasApiTokens;
 
 #[Fillable(['name',
     'username',
     'email',
     'phone',
-    'password',])]
+    'password',
+    'ver_status',
+    'verified_at'])]
 #[Hidden(['password', 'remember_token'])]
 
 class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, HasRoles;
+    use HasFactory, Notifiable, HasRoles, HasApiTokens;
 
     // spaces owned by user
     public function spaces()
@@ -79,7 +82,56 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(UserDocument::class);
     }
 
+    public function verificationStatus()
+    {
+        return $this->belongsTo(Status::class, 'ver_status');
+    }
 
+
+    public function getIsOwnerAttribute(): bool
+    {
+        // A user is an owner if they have the 'owner' role via Spatie
+        return $this->hasRole('owner');
+    }
+
+    public function getIsVerifiedAttribute(): bool
+    {
+        // A user is verified regardless of role if their status is verified
+        return $this->ver_status === \App\Models\Status::USR_VERIFIED;
+    }
+
+    public function getIsPendingVerificationAttribute(): bool
+    {
+        return $this->ver_status === \App\Models\Status::USR_VERIFY_PENDING;
+    }
+
+    // app/Models/User.php
+
+    // app/Models/User.php
+
+    public function getActionBtnAttribute(): ?object
+    {
+        $status = $this->ver_status;
+        $isOwner = $this->hasRole('owner');
+
+        if ($status == \App\Models\Status::USR_UNVERIFIED || $status == \App\Models\Status::USR_REJECTED) {
+            return (object) [
+                'label' => 'Verify Now!',
+                'color' => 'bg-orange-500 hover:bg-orange-600 shadow-orange-500/30',
+                'url' => route('verification.index') 
+            ];
+        }
+
+        if ($status == \App\Models\Status::USR_VERIFIED && !$isOwner) {
+            return (object) [
+                'label' => 'List Your Space',
+                'color' => 'bg-teal-600 hover:bg-teal-700 shadow-teal-500/30',
+                'url' => route('space-registrations.create') 
+            ];
+        }
+
+        return null;
+    }
     /**
      * Get the attributes that should be cast.
      *
@@ -89,6 +141,7 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return [
             'email_verified_at' => 'datetime',
+            'verified_at' => 'datetime', 
             'password' => 'hashed',
         ];
     }
