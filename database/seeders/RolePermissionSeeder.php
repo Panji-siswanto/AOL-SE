@@ -22,7 +22,7 @@ class RolePermissionSeeder extends Seeder
             'approve space registration',
             'reject space registration',
 
-            // spaces
+            // spaces      
             'view spaces',
             'view space detail',
             'manage own spaces',
@@ -80,6 +80,7 @@ class RolePermissionSeeder extends Seeder
         // RENTER (Base State) → Strictly limited to space discovery and dashboard monitoring
         // Sensitive writing actions are removed from this default group.
         $renter->givePermissionTo([
+             'submit space registration',   
             'view spaces',
             'view space detail',
             'bookmark space',
