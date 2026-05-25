@@ -23,6 +23,10 @@ Route::get('/', function () {
     return view('dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
+Route::get('/space-details', function ($space) {
+    return view('dashboard');
+})->name('space-details');
+
 
 /*
 |--------------------------------------------------------------------------
@@ -84,8 +88,9 @@ Route::prefix('admin')
         Route::get('/listing-requests/{registration}', [ListingRequestController::class, 'show'])->name('listing-requests.show');
         Route::post('/listing-requests/{registration}/approve', [ListingRequestController::class, 'approve'])->name('listing-requests.approve');
         Route::post('/listing-requests/{registration}/reject', [ListingRequestController::class, 'reject'])->name('listing-requests.reject');
-        
+
     });
 
+    Route::get('/space-details/{space}', [ListingRequestController::class, 'show'])->name('space-details.show');
 // Load standard Breeze authentication routes (login, register, passwords)       
 require __DIR__.'/auth.php';
