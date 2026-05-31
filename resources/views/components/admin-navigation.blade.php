@@ -41,14 +41,7 @@
                     </x-slot>
                     
                     <x-slot name="content">
-                        <div class="px-4 py-2 text-[11px] text-orange-600 bg-orange-50/50 border-b border-gray-50 font-extrabold uppercase tracking-wider">
-                            Command Center
-                        </div>
-                        
-                        <x-dropdown-link :href="route('profile.edit')">
-                            Admin Profile
-                        </x-dropdown-link>
-                        
+                                                
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
                             <x-dropdown-link :href="route('logout')" onclick="event.preventDefault(); this.closest('form').submit();" class="text-red-600 hover:bg-red-50">

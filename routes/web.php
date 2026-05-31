@@ -21,11 +21,8 @@ Route::get('/', function () {
         return redirect()->route('admin.dashboard');
     }
     return view('dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+})->name('dashboard');
 
-Route::get('/space-details', function ($space) {
-    return view('dashboard');
-})->name('space-details');
 
 
 /*
@@ -79,10 +76,11 @@ Route::prefix('admin')
 
         // User Identity Verification Antrean
         Route::get('/user-verifications', [UserVerificationRequestController::class, 'index'])->name('user-verifications.index');
+        Route::get('/user-verifications/history', [UserVerificationRequestController::class, 'history'])->name('user-verifications.history');
         Route::get('/user-verifications/{verificationLog}', [UserVerificationRequestController::class, 'show'])->name('user-verifications.show');
         Route::post('/user-verifications/{verificationLog}/approve', [UserVerificationRequestController::class, 'approve'])->name('user-verifications.approve');
         Route::post('/user-verifications/{verificationLog}/reject', [UserVerificationRequestController::class, 'reject'])->name('user-verifications.reject');
-        
+
         // Space Listing Requests (Moderation queue for new properties)
         Route::get('/listing-requests', [ListingRequestController::class, 'index'])->name('listing-requests.index');
         Route::get('/listing-requests/{registration}', [ListingRequestController::class, 'show'])->name('listing-requests.show');

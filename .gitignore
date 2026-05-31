@@ -1,3 +1,6 @@
+/storage/app/public/staging/*
+/public/storage/staging/*
+
 *.log
 .DS_Store
 .env

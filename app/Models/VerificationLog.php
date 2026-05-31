@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Models\VerificationDocument;
+use App\Traits\Filterable;
+use App\Traits\Searchable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class VerificationLog extends Model
 {
-    use HasFactory;
+    use HasFactory,Filterable, Searchable;
 
     protected $fillable = [
         'user_id',
@@ -18,6 +20,13 @@ class VerificationLog extends Model
         'status_id',
         'note', // Renamed from admin_note to match your ERD diagram perfectly
     ];
+
+    protected $searchable = [
+        'user.name',
+        'user.email',
+        'note'
+    ];
+
 
     /**
      * Relationship to the user submitting the verification.

@@ -16,13 +16,25 @@ class UserVerificationRequestController extends Controller
      * INDEX: Fetch all pending verification logs eager-loaded with user profiles
      * and their newly normalized staging document collections.
      */
+  /**
+     * INDEX: Fetch all pending verification logs eager-loaded with user profiles
+     * and their newly normalized staging document collections.
+     */
     public function index(Request $request)
     {
-        // Eager-load the parent user profile alongside dynamic child verification documents
-        $pendingLogs = VerificationLog::with(['user', 'documents.documentType'])
-            ->where('status_id', Status::USR_VERIFY_PENDING)
-            ->latest()
-            ->get();
+        // Build the base query for pending logs [cite: 585, 586]
+        $query = VerificationLog::with(['user', 'documents.documentType'])
+            ->where('status_id', \App\Models\Status::USR_VERIFY_PENDING)
+            ->search($request->search); // Automatically searches name/email via trait
+
+        // Apply dynamic date sorting (using created_at to see who has been waiting longest)
+        if ($request->sort_date === 'oldest') {
+            $query->oldest('created_at');
+        } else {
+            $query->latest('created_at'); // Default to newest first
+        }
+
+        $pendingLogs = $query->get();
 
         if ($request->wantsJson()) {
             return response()->json([
@@ -33,7 +45,6 @@ class UserVerificationRequestController extends Controller
 
         return view('admin.user-verification.index', compact('pendingLogs'));
     }
-
     /**
      * SHOW: Eager-load nested user and normalized document relations onto the bound staging instance.
      */
@@ -155,4 +166,24 @@ class UserVerificationRequestController extends Controller
 
         return redirect()->back()->with('success', 'User verification submission has been rejected.');
     }
+    public function history(Request $request)
+        {
+            // Build the base query
+            $query = VerificationLog::with(['user', 'status', 'admin', 'documents.documentType'])
+                ->where('status_id', '!=', \App\Models\Status::USR_VERIFY_PENDING)
+                ->search($request->search)       // Uses our custom Searchable trait
+                ->withStatus($request->status);  // Uses our Filterable trait
+
+            // Apply dynamic date sorting
+            if ($request->sort_date === 'oldest') {
+                $query->oldest('updated_at');
+            } else {
+                $query->latest('updated_at'); // Default to newest first
+            }
+
+            // Paginate and retain all query parameters in the URL
+            $historicalLogs = $query->paginate(15)->withQueryString();
+
+            return view('admin.user-verification.history', compact('historicalLogs'));
+        }
 }

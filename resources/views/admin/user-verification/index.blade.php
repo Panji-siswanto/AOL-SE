@@ -1,16 +1,49 @@
 <x-admin-layout>
     <div class="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8" x-data="{ rejectingId: null, viewingDoc: null }">
         
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
             <div>
-                <h1 class="text-3xl font-black text-gray-900 tracking-tight">User Verifications Review</h1>
+                <h1 class="text-3xl font-black text-gray-900 tracking-tight">User Verifications</h1>
                 <p class="text-gray-500 text-sm mt-1">
-                    Validate the authenticity of identity cards (KTP) and selfie submissions before authorizing listing and space rental capabilities.
+                    Manage and audit identity verification requests for platform access.
                 </p>
             </div>
-            <div class="bg-orange-50 border border-orange-100 px-4 py-2 rounded-xl text-xs font-extrabold text-orange-600 self-stretch sm:self-auto text-center">
-                Pending Queue: {{ $pendingLogs->count() }}
+        </div>
+
+       <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-8">
+            
+            <div class="bg-gray-100 p-1.5 rounded-2xl inline-flex flex-wrap shrink-0">
+                <a href="{{ route('admin.user-verifications.index') }}"
+                   class="px-5 py-2.5 text-xs font-extrabold rounded-xl transition-all {{ request()->routeIs('admin.user-verifications.index') ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900' }}">
+                    ⏳ Pending Queue ({{ $pendingLogs->count() }})
+                </a>
+                <a href="{{ route('admin.user-verifications.history') }}"
+                   class="px-5 py-2.5 text-xs font-extrabold rounded-xl transition-all {{ request()->routeIs('admin.user-verifications.history') ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900' }}">
+                    📁 Processed History
+                </a>
             </div>
+
+            <form method="GET" action="{{ route('admin.user-verifications.index') }}" class="flex flex-wrap w-full lg:w-auto items-center gap-2">
+                
+                <div class="relative w-full sm:w-auto lg:w-64">
+                    <input type="text" name="search" value="{{ request('search') }}" placeholder="Search name or email..." 
+                           class="w-full bg-white border border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-200 rounded-xl pl-4 pr-10 py-2.5 text-xs font-medium text-gray-900 outline-none transition">
+                    <button type="submit" class="absolute right-3 top-2.5 text-gray-400 hover:text-teal-600">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    </button>
+                </div>
+                
+                <select name="sort_date" onchange="this.form.submit()" class="bg-white border border-gray-200 rounded-xl pl-3 pr-8 py-2.5 text-xs font-bold text-gray-700 focus:ring-2 focus:ring-teal-200 focus:border-teal-500 outline-none cursor-pointer">
+                    <option value="newest" {{ request('sort_date', 'newest') === 'newest' ? 'selected' : '' }}>Newest First</option>
+                    <option value="oldest" {{ request('sort_date') === 'oldest' ? 'selected' : '' }}>Oldest First</option>
+                </select>
+
+                @if(request('search') || request('sort_date') === 'oldest')
+                    <a href="{{ route('admin.user-verifications.index') }}" class="px-3 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-xs font-bold transition">
+                        Clear
+                    </a>
+                @endif
+            </form>
         </div>
 
         @if(session('success'))

@@ -23,6 +23,15 @@ class SpaceRegistration extends Model
         'status_id',
     ];
 
+       
+    protected $searchable = [
+        'name',
+        'owner.name',
+        'location.city',
+        'location.province',
+        'location.address',
+    ];
+
     // belongs to user (owner)
     public function owner(){
         return $this->belongsTo(User::class, 'owner_id');
