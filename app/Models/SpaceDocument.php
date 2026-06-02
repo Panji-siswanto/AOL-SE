@@ -16,13 +16,15 @@ class SpaceDocument extends Model
         'description'
     ];
 
-    public function spaceRegistration()
-    {
-        return $this->belongsTo(SpaceRegistration::class);
-    }
 
-    public function type()
+
+    public function documentType()
     {
         return $this->belongsTo(DocumentType::class, 'document_type_id');
+    }
+    
+    public function registration()
+    {
+        return $this->belongsTo(SpaceRegistration::class, 'space_registration_id');
     }
 }

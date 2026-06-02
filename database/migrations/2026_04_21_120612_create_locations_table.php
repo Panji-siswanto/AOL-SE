@@ -9,15 +9,15 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-    public function up(): void{
+   public function up(): void{
         Schema::create('locations', function (Blueprint $table) {
             $table->id();
             $table->string('city', 100);
             $table->string('province', 100);
-            $table->string('address');
-            $table->decimal('latitude', 10, 7);
-            $table->decimal('longitude', 10, 7);
-            $table->string('place_id', 100);
+            $table->string('address', 255);
+            $table->decimal('latitude', 10, 7)->nullable();  
+            $table->decimal('longitude', 10, 7)->nullable(); 
+            $table->string('place_id')->nullable();
             $table->timestamps();
         });
     }

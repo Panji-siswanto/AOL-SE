@@ -52,14 +52,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
 | Only users who have been successfully vetted and hold the specific 
 | permission can register or manage spaces.
 */
-Route::middleware(['auth', 'verified', 'permission:submit space registration'])->group(function () {
-    // Verified User Routes (Spatie Permissions Protected)
+Route::middleware(['auth', 'verified'])->group(function () {
+    
+    Route::get('/space-registrations', [SpaceRegistrationController::class, 'index'])->name('space-registrations.index');
     Route::get('/space-registrations/create', [SpaceRegistrationController::class, 'create'])->name('space-registrations.create');
     Route::post('/space-registrations', [SpaceRegistrationController::class, 'store'])->name('space-registrations.store');
-    
+    Route::get('/space-registrations/{id}', [SpaceRegistrationController::class, 'show'])->name('space-registrations.show');
+    Route::get('/space-registrations/{id}/edit', [SpaceRegistrationController::class, 'edit'])->name('space-registrations.edit');
+    Route::put('/space-registrations/{id}', [SpaceRegistrationController::class, 'update'])->name('space-registrations.update');
+    Route::delete('/space-registrations/{id}', [SpaceRegistrationController::class, 'destroy'])->name('space-registrations.destroy');
+    Route::post('/space-registrations/{id}/photos/reorder', [SpaceRegistrationController::class, 'reorderPhotos'])->name('space-registrations.photos.reorder');
 });
-
-
 /*
 |--------------------------------------------------------------------------
 | 4. SECURE ADMIN COMMAND CENTER
@@ -68,7 +71,7 @@ Route::middleware(['auth', 'verified', 'permission:submit space registration'])-
 */
 Route::prefix('admin')
     ->name('admin.')
-    ->middleware(['auth', 'role:admin']) 
+    ->middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')
     ->group(function () {
         
         // Admin Overview Dashboard (/admin)
@@ -83,11 +86,12 @@ Route::prefix('admin')
 
         // Space Listing Requests (Moderation queue for new properties)
         Route::get('/listing-requests', [ListingRequestController::class, 'index'])->name('listing-requests.index');
+        Route::get('/listing-requests/history', [ListingRequestController::class, 'history'])->name('listing-requests.history');
         Route::get('/listing-requests/{registration}', [ListingRequestController::class, 'show'])->name('listing-requests.show');
         Route::post('/listing-requests/{registration}/approve', [ListingRequestController::class, 'approve'])->name('listing-requests.approve');
         Route::post('/listing-requests/{registration}/reject', [ListingRequestController::class, 'reject'])->name('listing-requests.reject');
-
     });
+
 
     Route::get('/space-details/{space}', [ListingRequestController::class, 'show'])->name('space-details.show');
 // Load standard Breeze authentication routes (login, register, passwords)       

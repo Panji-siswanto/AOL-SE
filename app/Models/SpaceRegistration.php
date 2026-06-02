@@ -19,7 +19,6 @@ class SpaceRegistration extends Model
         'name',
         'description',
         'size',
-        'price',
         'status_id',
     ];
 
@@ -68,4 +67,10 @@ class SpaceRegistration extends Model
     {
         return $this->hasMany(SpacePhoto::class);
     }
+
+   public function prices()
+    {
+        return $this->hasMany(SpaceRegistrationPrice::class);
+    }
+
 }

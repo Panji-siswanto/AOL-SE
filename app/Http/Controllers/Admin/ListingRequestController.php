@@ -16,54 +16,65 @@ class ListingRequestController extends Controller
 {
     public function index(Request $request)
     {
-        $requests = SpaceRegistration::with(['location', 'status', 'owner'])
-            ->where('status_id', Status::REG_PENDING)
-            // Optional scopes: only trigger if methods exist on model
-            ->when($request->search, function ($query, $search) {
-                $query->where('name', 'like', "%{$search}%");
-            })
-            ->when($request->sort_price, function ($query, $direction) {
-                $query->orderBy('price', $direction);
-            })
-            ->latest()
-            ->get();
+        $pendingStatusId = Status::where('code', 'reg_pending')->value('id');
 
-        if ($request->wantsJson()) {
-            return response()->json([
-                'status' => 'success',
-                'data' => $requests
-            ]);
+        $query = SpaceRegistration::with(['location', 'status', 'owner', 'documents.documentType', 'prices.pricingType'])
+            ->where('status_id', $pendingStatusId)
+            ->search($request->search);
+
+        if ($request->sort_date === 'oldest') {
+            $query->oldest();
+        } else {
+            $query->latest();
         }
 
-        // Returns view pointing to singular folder mapping
-        return view('admin.listing-request.index', compact('requests'));
+        $requests = $query->get();
+        $pendingCount = $requests->count();
+
+        if ($request->wantsJson()) {
+            return response()->json(['status' => 'success', 'data' => $requests]);
+        }
+
+        return view('admin.listing-request.index', compact('requests', 'pendingCount'));
     }
 
-    public function show(Request $request, SpaceRegistration $registration)
+    public function history(Request $request)
     {
-        $registration->load(['location', 'owner']);
-        return response()->json([
-            'status' => 'success',
-            'data' => $registration
-        ]);
+        $approvedStatusId = Status::where('code', 'reg_approved')->value('id');
+        $rejectedStatusId = Status::where('code', 'reg_rejected')->value('id');
+
+        $query = SpaceRegistration::with(['location', 'status', 'owner', 'documents.documentType', 'prices.pricingType', 'logs.admin'])
+            ->whereIn('status_id', [$approvedStatusId, $rejectedStatusId])
+            ->search($request->search)        
+            ->withStatus($request->status);   
+
+        if ($request->sort_date === 'oldest') {
+            $query->oldest('updated_at');
+        } else {
+            $query->latest('updated_at');
+        }
+
+        $historicalRequests = $query->paginate(15)->withQueryString();
+
+        return view('admin.listing-request.history', compact('historicalRequests'));
     }
+  
 
     public function approve(Request $request, SpaceRegistration $registration)
     {
         $owner = $registration->owner;
-        if ($owner->ver_status !== Status::USR_VERIFIED) {
-            if ($request->wantsJson()) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Cannot approve listing. The owner\'s identity (KTP) verification must be approved first.'
-                ], 400);
-            }
-            return redirect()->back()->withErrors(['Verification Error' => 'Cannot approve listing. The owner\'s identity (KTP) verification must be approved first.']);
+        $verifiedStatusId = Status::where('code', 'usr_verified')->value('id');
+
+        if ($owner->ver_status !== $verifiedStatusId) {
+            return redirect()->back()->with('error', 'Cannot approve listing. The host\'s identity (KTP) must be verified first.');
         }
 
         DB::beginTransaction();
         try {
-            $registration->update(['status_id' => Status::REG_APPROVED]);
+            $approvedStatusId = Status::where('code', 'reg_approved')->value('id');
+            $registration->update(['status_id' => $approvedStatusId]);
+
+            $basePrice = $registration->prices()->min('price') ?? 0;
 
             $space = Space::create([
                 'owner_id' => $registration->owner_id,
@@ -72,8 +83,8 @@ class ListingRequestController extends Controller
                 'name' => $registration->name,
                 'description' => $registration->description,
                 'size' => $registration->size,
-                'price' => $registration->price,
-                'status_id' => Status::SPC_AVAILABLE,
+                'price' => $basePrice, 
+                'status_id' => Status::where('code', 'spc_available')->value('id'),
             ]);
 
             $user = User::findOrFail($registration->owner_id);
@@ -83,26 +94,17 @@ class ListingRequestController extends Controller
 
             RegistrationLog::create([
                 'registration_id' => $registration->id,
-                'admin_id' => Auth::id(), // Fixed missing parentheses
+                'admin_id' => Auth::id(),
                 'note' => $request->note ?? 'Space listing formally approved and published to catalog.',
             ]);
 
             DB::commit();
 
-            if ($request->wantsJson()) {
-                return response()->json([
-                    'status' => 'success', 
-                    'message' => 'Listing approved successfully.', 
-                    'data' => $space
-                ], 200);
-            }
-
             return redirect()->back()->with('success', "Space listing '{$space->name}' has been approved and published.");
 
         } catch (\Exception $e) {
             DB::rollBack();
-            if ($request->wantsJson()) return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
-            return redirect()->back()->withErrors(['System Error' => $e->getMessage()]);
+            return redirect()->back()->with('error', 'System Error: ' . $e->getMessage());
         }
     }
 
@@ -112,26 +114,22 @@ class ListingRequestController extends Controller
         
         DB::beginTransaction();
         try {
-            $registration->update(['status_id' => Status::REG_REJECTED]);
+            $rejectedStatusId = Status::where('code', 'reg_rejected')->value('id');
+            $registration->update(['status_id' => $rejectedStatusId]);
             
             RegistrationLog::create([
                 'registration_id' => $registration->id,
-                'admin_id' => Auth::id(), // Fixed missing parentheses
+                'admin_id' => Auth::id(),
                 'note' => $request->note, 
             ]);
 
             DB::commit();
 
-            if ($request->wantsJson()) {
-                return response()->json(['status' => 'success', 'message' => 'Listing rejected.'], 200);
-            }
-
             return redirect()->back()->with('success', 'Space listing application has been rejected.');
 
         } catch (\Exception $e) {
             DB::rollBack();
-            if ($request->wantsJson()) return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
-            return redirect()->back()->withErrors(['System Error' => $e->getMessage()]);
+            return redirect()->back()->with('error', 'System Error: ' . $e->getMessage());
         }
     }
 }

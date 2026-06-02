@@ -6,8 +6,8 @@
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
             <div>
                 <a href="{{ route('admin.dashboard') ?? '#' }}" class="text-sm font-bold text-gray-400 hover:text-teal-600 transition mb-2 inline-block">&larr; Back to Dashboard</a>
-                <h1 class="text-3xl font-black text-gray-900 tracking-tight">Space Listing Queue</h1>
-                <p class="text-sm text-gray-500 mt-1">Review and moderate pending commercial space applications.</p>
+                <h1 class="text-3xl font-black text-gray-900 tracking-tight">Space Listing History</h1>
+                <p class="text-gray-500 text-sm mt-1">Audit log of previously processed space registrations and commercial listings.</p>
             </div>
         </div>
 
@@ -18,7 +18,7 @@
             <div class="bg-gray-100 p-1.5 rounded-2xl inline-flex flex-wrap shrink-0">
                 <a href="{{ route('admin.listing-requests.index') }}"
                    class="px-5 py-2.5 text-xs font-extrabold rounded-xl transition-all {{ request()->routeIs('admin.listing-requests.index') ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900' }}">
-                    ⏳ Pending Queue ({{ $pendingCount ?? 0 }})
+                    ⏳ Pending Queue
                 </a>
                 <a href="{{ route('admin.listing-requests.history') }}"
                    class="px-5 py-2.5 text-xs font-extrabold rounded-xl transition-all {{ request()->routeIs('admin.listing-requests.history') ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900' }}">
@@ -26,8 +26,8 @@
                 </a>
             </div>
 
-            {{-- Search & Sort Form --}}
-            <form method="GET" action="{{ route('admin.listing-requests.index') }}" class="flex flex-wrap w-full lg:w-auto items-center gap-2">
+            {{-- Search, Status & Sort Form --}}
+            <form method="GET" action="{{ route('admin.listing-requests.history') }}" class="flex flex-wrap w-full lg:w-auto items-center gap-2">
                 
                 <div class="relative w-full sm:w-auto lg:w-64">
                     <input type="text" name="search" value="{{ request('search') }}" placeholder="Search property or host..." 
@@ -37,84 +37,107 @@
                     </button>
                 </div>
                 
+                <select name="status" onchange="this.form.submit()" class="bg-white border border-gray-200 rounded-xl pl-3 pr-8 py-2.5 text-xs font-bold text-gray-700 focus:ring-2 focus:ring-teal-200 focus:border-teal-500 outline-none cursor-pointer">
+                    <option value="">All Statuses</option>
+                    <option value="reg_approved" {{ request('status') === 'reg_approved' ? 'selected' : '' }}>Approved</option>
+                    <option value="reg_rejected" {{ request('status') === 'reg_rejected' ? 'selected' : '' }}>Rejected</option>
+                </select>
+
                 <select name="sort_date" onchange="this.form.submit()" class="bg-white border border-gray-200 rounded-xl pl-3 pr-8 py-2.5 text-xs font-bold text-gray-700 focus:ring-2 focus:ring-teal-200 focus:border-teal-500 outline-none cursor-pointer">
                     <option value="newest" {{ request('sort_date', 'newest') === 'newest' ? 'selected' : '' }}>Newest First</option>
                     <option value="oldest" {{ request('sort_date') === 'oldest' ? 'selected' : '' }}>Oldest First</option>
                 </select>
 
-                @if(request('search') || request('sort_date') === 'oldest')
-                    <a href="{{ route('admin.listing-requests.index') }}" class="px-3 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-xs font-bold transition">
+                @if(request('search') || request('status') || request('sort_date') === 'oldest')
+                    <a href="{{ route('admin.listing-requests.history') }}" class="px-3 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-xs font-bold transition">
                         Clear
                     </a>
                 @endif
             </form>
         </div>
 
-        @if(session('success'))
-            <div class="mb-6 p-4 bg-emerald-50 border border-emerald-100 rounded-2xl text-emerald-800 text-sm font-bold flex items-center gap-3 shadow-sm">
-                <span>✅</span> {{ session('success') }}
-            </div>
-        @endif
-        @if(session('error'))
-            <div class="mb-6 p-4 bg-red-50 border border-red-100 rounded-2xl text-red-800 text-sm font-bold flex items-center gap-3 shadow-sm">
-                <span>🚨</span> {{ session('error') }}
-            </div>
-        @endif
-
-        {{-- Queue Table --}}
+        {{-- History Table --}}
         <div class="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden">
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="bg-gray-50/75 border-b border-gray-100 text-[11px] font-extrabold text-gray-400 uppercase tracking-wider">
                             <th class="py-4 px-6">Property Details</th>
-                            <th class="py-4 px-6">Host / Owner</th>
-                            <th class="py-4 px-6">Location</th>
-                            <th class="py-4 px-6">Submitted At</th>
-                            <th class="py-4 px-6 text-right">Actions</th>
+                            <th class="py-4 px-6">Status</th>
+                            <th class="py-4 px-6">Admin Notes</th>
+                            <th class="py-4 px-6">Processed By</th>
+                            <th class="py-4 px-6 text-right">Processed At</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-50 text-sm">
-                        @forelse($requests as $req)
+                        @forelse($historicalRequests as $req)
+                            @php
+                                $latestLog = $req->logs->last();
+                                $isApproved = $req->status->code === 'reg_approved';
+                            @endphp
                             <tr class="hover:bg-gray-50/50 transition-colors duration-150">
                                 <td class="py-5 px-6">
                                     <div class="font-bold text-gray-900">{{ $req->name }}</div>
-                                    <div class="text-xs text-gray-400 mt-0.5">{{ $req->size }}</div>
-                                </td>
-                                <td class="py-5 px-6">
-                                    <div class="font-bold text-gray-900">{{ $req->owner->name }}</div>
-                                    <div class="text-[10px] mt-1 uppercase tracking-wider font-black {{ $req->owner->ver_status == \App\Models\Status::where('code', 'usr_verified')->value('id') ? 'text-emerald-500' : 'text-orange-500' }}">
-                                        {{ $req->owner->ver_status == \App\Models\Status::where('code', 'usr_verified')->value('id') ? '✓ Identity Verified' : '⚠️ Identity Pending' }}
-                                    </div>
-                                </td>
-                                <td class="py-5 px-6 text-xs text-gray-600 font-medium truncate max-w-[200px]" title="{{ $req->location->address }}">
-                                    {{ $req->location->city }}, {{ $req->location->province }}
-                                </td>
-                                <td class="py-5 px-6 text-xs text-gray-500 font-medium">
-                                    {{ $req->created_at->format('M d, Y') }}
-                                    <span class="block text-[10px] text-gray-400 mt-0.5">{{ $req->created_at->format('H:i') }}</span>
-                                </td>
-                                <td class="py-5 px-6 text-right">
-                                    <button @click="openReview({{ $req->toJson() }})" class="bg-gray-900 hover:bg-teal-600 text-white px-4 py-2 rounded-xl text-xs font-bold transition shadow-sm">
-                                        Review Application
+                                    <div class="text-xs text-gray-400 mt-0.5">{{ $req->owner->name }}</div>
+                                    
+                                    {{-- Open read-only modal --}}
+                                    <button @click="openReview({{ $req->toJson() }})" class="mt-2 text-[10px] bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold px-2 py-1 rounded transition">
+                                        View Data Snapshot
                                     </button>
+                                </td>
+
+                                <td class="py-5 px-6">
+                                    @if($isApproved)
+                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-black bg-teal-50 text-teal-700 border border-teal-100">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-teal-500"></span> Approved
+                                        </span>
+                                    @else
+                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-black bg-red-50 text-red-700 border border-red-100">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span> Rejected
+                                        </span>
+                                    @endif
+                                </td>
+
+                                <td class="py-5 px-6">
+                                    @if($latestLog && $latestLog->note)
+                                        <p class="text-xs text-gray-600 font-medium max-w-xs leading-relaxed line-clamp-3" title="{{ $latestLog->note }}">
+                                            {{ $latestLog->note }}
+                                        </p>
+                                    @else
+                                        <span class="text-gray-300 text-xs italic">- No notes provided -</span>
+                                    @endif
+                                </td>
+
+                                <td class="py-5 px-6">
+                                    <div class="font-bold text-gray-800 text-xs">{{ $latestLog->admin->name ?? 'System' }}</div>
+                                </td>
+
+                                <td class="py-5 px-6 text-right text-xs text-gray-500 font-medium">
+                                    {{ $req->updated_at->format('M d, Y') }}
+                                    <span class="block text-[10px] text-gray-400 mt-0.5">{{ $req->updated_at->format('H:i') }}</span>
                                 </td>
                             </tr>
                         @empty
                             <tr>
                                 <td colspan="5" class="py-16 text-center">
-                                    <div class="text-4xl mb-3">🏪</div>
-                                    <div class="font-extrabold text-gray-900 text-base">Queue is Empty</div>
-                                    <p class="text-xs text-gray-400 mt-1">There are no pending space registrations to review at this time.</p>
+                                    <div class="text-4xl mb-3">📭</div>
+                                    <div class="font-extrabold text-gray-900 text-base">No Historical Records</div>
+                                    <p class="text-xs text-gray-400 mt-1">We couldn't find any processed listing requests matching your filters.</p>
                                 </td>
                             </tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
+
+            @if($historicalRequests->hasPages())
+                <div class="p-4 border-t border-gray-100 bg-gray-50/50">
+                    {{ $historicalRequests->links() }}
+                </div>
+            @endif
         </div>
 
-        {{-- Alpine Centered Pop-Up Modal for Review --}}
+        {{-- Alpine Centered Pop-Up Modal (Read-Only Mode) --}}
         <div x-show="isOpen" x-cloak class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
             <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
                 <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" x-show="isOpen" x-transition.opacity @click="closeReview()"></div>
@@ -129,16 +152,14 @@
                      x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
                      @click.stop>
                     
-                    {{-- Modal Header --}}
                     <div class="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 shrink-0">
                         <div>
-                            <h2 class="text-2xl font-black text-gray-900">Review Application</h2>
-                            <p class="text-sm text-gray-500 mt-1" x-text="requestData ? 'ID: REQ-' + requestData.id : ''"></p>
+                            <h2 class="text-2xl font-black text-gray-900">Application Snapshot</h2>
+                            <p class="text-sm text-gray-500 mt-1" x-text="requestData ? 'ID: REQ-' + requestData.id + ' (Read-Only)' : ''"></p>
                         </div>
                         <button @click="closeReview()" class="text-gray-400 hover:text-gray-900 bg-white p-2.5 rounded-full shadow-sm border border-gray-200 transition">✕</button>
                     </div>
 
-                    {{-- Modal Body (Scrollable) --}}
                     <div class="flex-1 overflow-y-auto p-8 space-y-8" x-if="requestData">
                         
                         {{-- Host Info --}}
@@ -162,7 +183,6 @@
                                 <h4 class="font-black text-xl text-gray-900 mb-1" x-text="requestData?.name"></h4>
                                 <p class="text-sm font-bold text-teal-600 mb-4" x-text="requestData?.size"></p>
                                 <p class="text-sm text-gray-600 whitespace-pre-line leading-relaxed" x-text="requestData?.description"></p>
-                                
                                 <div class="mt-5 pt-5 border-t border-gray-100 flex items-start gap-3">
                                     <span class="text-xl">📍</span>
                                     <p class="text-sm text-gray-600 font-medium leading-tight" x-text="requestData?.location.address + ', ' + requestData?.location.city + ', ' + requestData?.location.province"></p>
@@ -170,22 +190,9 @@
                             </div>
                         </div>
 
-                        {{-- Pricing Array --}}
-                        <div>
-                            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Proposed Rates</h3>
-                            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                <template x-for="price in requestData?.prices" :key="price.id">
-                                    <div class="bg-emerald-50 border border-emerald-100 p-4 rounded-xl text-center">
-                                        <p class="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1" x-text="price.pricing_type.name"></p>
-                                        <p class="font-black text-emerald-900 text-lg">Rp <span x-text="parseInt(price.price).toLocaleString('id-ID')"></span></p>
-                                    </div>
-                                </template>
-                            </div>
-                        </div>
-
                         {{-- Legal Documents --}}
                         <div>
-                            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Legal Verification Assets</h3>
+                            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Legal Assets on File</h3>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <template x-for="doc in requestData?.documents" :key="doc.id">
                                     <a :href="'/storage/' + doc.file_path" target="_blank" class="flex items-center gap-4 p-4 rounded-2xl border border-gray-200 hover:border-blue-400 hover:bg-blue-50 hover:shadow-md transition group">
@@ -201,28 +208,11 @@
 
                     </div>
 
-                    {{-- Modal Footer (Action Buttons) --}}
-                    <div class="p-8 border-t border-gray-100 bg-gray-50 shrink-0">
-                        <form :action="'/admin/listing-requests/' + requestData?.id + '/reject'" method="POST" id="reject-form" class="hidden">
-                            @csrf
-                            <input type="hidden" name="note" x-model="adminNote">
-                        </form>
-                        <form :action="'/admin/listing-requests/' + requestData?.id + '/approve'" method="POST" id="approve-form" class="hidden">
-                            @csrf
-                            <input type="hidden" name="note" x-model="adminNote">
-                        </form>
-
-                        <label class="block text-xs font-bold text-gray-700 mb-2">Admin Note (Required for Rejection)</label>
-                        <textarea x-model="adminNote" rows="2" class="w-full border-gray-200 rounded-xl text-sm mb-5 focus:ring-teal-500 focus:border-teal-500 shadow-sm" placeholder="State reason for approval or rejection..."></textarea>
-
-                        <div class="flex flex-col sm:flex-row gap-4">
-                            <button @click="submitReject()" class="flex-1 bg-white border-2 border-red-100 text-red-600 hover:bg-red-50 hover:border-red-200 font-bold py-3.5 rounded-xl transition shadow-sm">
-                                Reject Listing
-                            </button>
-                            <button @click="submitApprove()" class="flex-1 bg-teal-600 hover:bg-teal-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-teal-600/30 transition active:scale-95">
-                                Approve & Publish
-                            </button>
-                        </div>
+                    {{-- No action buttons, just a simple close button since it's read-only --}}
+                    <div class="p-6 border-t border-gray-100 bg-gray-50 shrink-0 flex justify-end">
+                        <button @click="closeReview()" class="px-8 py-3 bg-gray-900 hover:bg-gray-800 text-white font-bold rounded-xl transition shadow-sm">
+                            Close Snapshot
+                        </button>
                     </div>
 
                 </div>
@@ -235,11 +225,9 @@
             Alpine.data('reviewManager', () => ({
                 isOpen: false,
                 requestData: null,
-                adminNote: '',
 
                 openReview(data) {
                     this.requestData = data;
-                    this.adminNote = '';
                     this.isOpen = true;
                     document.body.style.overflow = 'hidden'; 
                 },
@@ -248,22 +236,6 @@
                     this.isOpen = false;
                     setTimeout(() => { this.requestData = null; }, 300);
                     document.body.style.overflow = 'auto';
-                },
-
-                submitApprove() {
-                    if(confirm('Publish this space to the marketplace?')) {
-                        document.getElementById('approve-form').submit();
-                    }
-                },
-
-                submitReject() {
-                    if(this.adminNote.trim() === '') {
-                        alert('You must provide a note/reason when rejecting an application.');
-                        return;
-                    }
-                    if(confirm('Are you sure you want to reject this application?')) {
-                        document.getElementById('reject-form').submit();
-                    }
                 }
             }));
         });

@@ -21,7 +21,7 @@ class DatabaseSeeder extends Seeder
                 RolePermissionSeeder::class,
                 DocumentTypeSeeder::class,
                 UserSeeder::class,     
-                DocumentTypeSeeder::class,  
+                PricingTypeSeeder::class,
         ]);
 
 

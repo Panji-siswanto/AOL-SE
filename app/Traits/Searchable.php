@@ -9,24 +9,33 @@ trait Searchable
      */
     public function scopeSearch($query, $term)
     {
-        // If there is no search term, or the model hasn't defined searchable fields, just return.
         if (!$term || empty($this->searchable)) {
             return $query;
         }
 
         $query->where(function ($q) use ($term) {
+            $relations = [];
+
             foreach ($this->searchable as $field) {
                 if (str_contains($field, '.')) {
-                    // If the field is a relationship (e.g., 'location.city' or 'user.name')
+                    // Group relation columns together (e.g., location => [city, province, address])
                     [$relation, $column] = explode('.', $field);
-                    
-                    $q->orWhereHas($relation, function ($relQuery) use ($term, $column) {
-                        $relQuery->where($column, 'like', "%{$term}%");
-                    });
+                    $relations[$relation][] = $column;
                 } else {
-                    // If the field is a direct column on the table (e.g., 'name' or 'description')
+                    // Direct table column
                     $q->orWhere($field, 'like', "%{$term}%");
                 }
+            }
+
+            // Execute a single orWhereHas per relationship
+            foreach ($relations as $relation => $columns) {
+                $q->orWhereHas($relation, function ($relQuery) use ($columns, $term) {
+                    $relQuery->where(function ($subQuery) use ($columns, $term) {
+                        foreach ($columns as $column) {
+                            $subQuery->orWhere($column, 'like', "%{$term}%");
+                        }
+                    });
+                });
             }
         });
 

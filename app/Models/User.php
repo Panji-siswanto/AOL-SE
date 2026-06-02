@@ -35,7 +35,7 @@ class User extends Authenticatable implements MustVerifyEmail
     public function spaces()
     {
         return $this->hasMany(Space::class, 'owner_id');
-    }
+}
 
     // space registrations submitted by user
     public function spaceRegistrations()
@@ -106,13 +106,15 @@ class User extends Authenticatable implements MustVerifyEmail
 
     // app/Models/User.php
 
-    // app/Models/User.php
-
-    public function getActionBtnAttribute(): ?object
+ public function getActionBtnAttribute(): ?object
     {
         $status = $this->ver_status;
         $isOwner = $this->hasRole('owner');
+        
+        // Check if the user has submitted at least one space registration
+        $hasRegistrations = \App\Models\SpaceRegistration::where('owner_id', $this->id)->exists();
 
+        // 1. Needs Identity Verification
         if ($status == \App\Models\Status::USR_UNVERIFIED || $status == \App\Models\Status::USR_REJECTED) {
             return (object) [
                 'label' => 'Verify Now!',
@@ -121,14 +123,25 @@ class User extends Authenticatable implements MustVerifyEmail
             ];
         }
 
-        if ($status == \App\Models\Status::USR_VERIFIED && !$isOwner) {
+        // 2. Verified AND (Is an Owner OR has a pending application) -> Show Management Dashboard
+        if ($isOwner || $hasRegistrations) {
+            return (object) [
+                'label' => 'My Listings',
+                'color' => 'bg-gray-900 hover:bg-gray-800 shadow-gray-900/30',
+                'url' => route('space-registrations.index') 
+            ];
+        }
+
+        // 3. Verified, NOT an owner, and NO applications -> First Time Listing
+        if ($status == \App\Models\Status::USR_VERIFIED && !$hasRegistrations) {
             return (object) [
                 'label' => 'List Your Space',
-                'color' => 'bg-teal-600 hover:bg-teal-700 shadow-teal-500/30',
+                'color' => 'bg-[#009485] hover:bg-teal-700 shadow-teal-500/30',
                 'url' => route('space-registrations.create') 
             ];
         }
 
+        // Returns null for USR_VERIFY_PENDING
         return null;
     }
     /**
