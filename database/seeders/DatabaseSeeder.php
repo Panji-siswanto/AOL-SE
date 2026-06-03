@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
                 DocumentTypeSeeder::class,
                 UserSeeder::class,     
                 PricingTypeSeeder::class,
+                MarketplaceSeeder::class
         ]);
 
 

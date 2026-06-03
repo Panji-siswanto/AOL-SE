@@ -26,7 +26,7 @@ class VerificationController extends Controller
         // Fetch the latest staging log to review previous outcomes or display rejection feedback
         $latestLog = VerificationLog::where('user_id', $user->id)->latest()->first();
 
-        return view('verification.index', compact('user', 'latestLog'));
+        return view('renter.verification.index', compact('user', 'latestLog'));
     }
 
     /**

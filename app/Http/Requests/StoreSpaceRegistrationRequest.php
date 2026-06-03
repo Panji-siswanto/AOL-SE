@@ -14,29 +14,31 @@ class StoreSpaceRegistrationRequest extends FormRequest
     public function rules(): array
     {
         return [
-            // Location Data
+            // Location
             'city' => ['required', 'string', 'max:100'],
             'province' => ['required', 'string', 'max:100'],
             'address' => ['required', 'string', 'max:255'],
             'latitude' => ['required', 'numeric', 'between:-90,90'],
             'longitude' => ['required', 'numeric', 'between:-180,180'],
 
-            // Space Registration Data
+            // Core Info
             'name' => ['required', 'string', 'max:100'],
             'description' => ['required', 'string'],
-            'size' => ['required', 'string', 'max:50'],
 
-            // Dynamic Pricing Validation
+            // Dimension Logic
+            'dimension_type' => ['required', 'in:exact,total'],
+            'length' => ['nullable', 'numeric', 'min:0.1', 'required_if:dimension_type,exact'],
+            'width'  => ['nullable', 'numeric', 'min:0.1', 'required_if:dimension_type,exact'],
+            'area'   => ['nullable', 'numeric', 'min:0.1', 'required_if:dimension_type,total'],
+
+            // Pricing
             'pricing' => ['required', 'array', 'min:1'],
             'pricing.*.is_active' => ['nullable', 'boolean'],
-            // Only require the price amount if the specific pricing type was toggled active
             'pricing.*.price' => ['nullable', 'numeric', 'min:0', 'required_with:pricing.*.is_active'],
 
-            // Legal Assets Validation
-            'surat_tanah' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'], // Max 5MB
+            // Documents & Photos
+            'surat_tanah' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
             'surat_izin' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
-
-            // Gallery Validation
             'primary_photo_index' => ['required', 'integer', 'min:0'],
             'photos' => ['required', 'array', 'min:1'],
             'photos.*' => ['required', 'image', 'mimes:jpg,jpeg,png', 'max:5120'],

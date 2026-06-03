@@ -59,7 +59,6 @@ class ListingRequestController extends Controller
         return view('admin.listing-request.history', compact('historicalRequests'));
     }
   
-
     public function approve(Request $request, SpaceRegistration $registration)
     {
         $owner = $registration->owner;
@@ -76,13 +75,16 @@ class ListingRequestController extends Controller
 
             $basePrice = $registration->prices()->min('price') ?? 0;
 
+            // FIX: Map the new dimension columns instead of the old 'size' string
             $space = Space::create([
                 'owner_id' => $registration->owner_id,
                 'location_id' => $registration->location_id,
                 'registration_id' => $registration->id,
                 'name' => $registration->name,
                 'description' => $registration->description,
-                'size' => $registration->size,
+                'length' => $registration->length,
+                'width' => $registration->width,
+                'area' => $registration->area,
                 'price' => $basePrice, 
                 'status_id' => Status::where('code', 'spc_available')->value('id'),
             ]);

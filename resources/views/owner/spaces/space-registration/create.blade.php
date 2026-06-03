@@ -45,7 +45,7 @@
             </div>
         @endif
 
-        <form action="{{ route('space-registrations.store') }}" method="POST" enctype="multipart/form-data" id="space-form" class="space-y-10">
+        <form action="{{ route('owner.spaces.registrations.store') }}" method="POST" enctype="multipart/form-data" id="space-form" class="space-y-10">
             @csrf
 
             {{-- 1. Basic Information & Pricing --}}
@@ -70,11 +70,54 @@
                                   class="w-full bg-gray-50 border border-gray-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 rounded-2xl px-4 py-3.5 text-sm outline-none transition font-medium text-gray-900">{{ old('description') }}</textarea>
                     </div>
 
-                    <div class="md:col-span-2">
-                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Dimensions / Size *</label>
-                        <input type="text" name="size" value="{{ old('size') }}" required 
-                               placeholder="e.g., 2x2 Meter / 3x4 m" 
-                               class="w-full bg-gray-50 border border-gray-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 rounded-2xl px-4 py-3.5 text-sm outline-none transition font-medium text-gray-900">
+                    {{-- Interactive Dimensions Toggle --}}
+                    <div class="md:col-span-2 pt-2 border-t border-gray-100" x-data="{ dimensionType: 'exact', length: '', width: '', totalArea: '' }">
+                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Space Dimensions *</label>
+                        <input type="hidden" name="dimension_type" x-model="dimensionType">
+
+                        <div class="flex gap-2 mb-4">
+                            <button type="button" @click="dimensionType = 'exact'" 
+                                    :class="dimensionType === 'exact' ? 'bg-orange-500 text-white shadow-md' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'"
+                                    class="px-4 py-2 rounded-xl text-xs font-bold transition-all">
+                                📏 Input Length x Width
+                            </button>
+                            <button type="button" @click="dimensionType = 'total'" 
+                                    :class="dimensionType === 'total' ? 'bg-orange-500 text-white shadow-md' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'"
+                                    class="px-4 py-2 rounded-xl text-xs font-bold transition-all">
+                                📐 I Only Know Total Area
+                            </button>
+                        </div>
+
+                        <div x-show="dimensionType === 'exact'" x-cloak class="p-5 bg-gray-50 rounded-2xl border border-gray-200">
+                            <div class="flex items-center gap-3">
+                                <div class="relative flex-1">
+                                    <input type="number" step="0.1" min="0.1" name="length" x-model="length" 
+                                           x-bind:required="dimensionType === 'exact'" placeholder="Length" 
+                                           class="w-full bg-white border border-gray-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 rounded-xl pl-4 pr-10 py-3 text-sm outline-none transition font-bold text-gray-900 shadow-sm">
+                                    <span class="absolute right-4 top-3 text-sm font-bold text-gray-400">m</span>
+                                </div>
+                                <span class="text-gray-400 font-black text-lg">×</span>
+                                <div class="relative flex-1">
+                                    <input type="number" step="0.1" min="0.1" name="width" x-model="width" 
+                                           x-bind:required="dimensionType === 'exact'" placeholder="Width" 
+                                           class="w-full bg-white border border-gray-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 rounded-xl pl-4 pr-10 py-3 text-sm outline-none transition font-bold text-gray-900 shadow-sm">
+                                    <span class="absolute right-4 top-3 text-sm font-bold text-gray-400">m</span>
+                                </div>
+                            </div>
+                            <div x-show="length && width" class="mt-3 text-xs font-bold text-gray-500 flex items-center gap-1.5 pl-2">
+                                <span class="text-orange-500">💡</span> Auto-calculated area: <span class="text-gray-900" x-text="(length * width).toFixed(2) + ' m²'"></span>
+                            </div>
+                        </div>
+
+                        <div x-show="dimensionType === 'total'" x-cloak class="p-5 bg-gray-50 rounded-2xl border border-gray-200">
+                            <div class="relative max-w-sm">
+                                <input type="number" step="0.1" min="0.1" name="area" x-model="totalArea" 
+                                       x-bind:required="dimensionType === 'total'" placeholder="Total Area" 
+                                       class="w-full bg-white border border-gray-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 rounded-xl pl-4 pr-12 py-3 text-sm outline-none transition font-bold text-gray-900 shadow-sm">
+                                <span class="absolute right-4 top-3 text-sm font-bold text-gray-400">m²</span>
+                            </div>
+                            <p class="text-[10px] font-medium text-gray-400 mt-2 pl-2">Use this option if the space is irregularly shaped or you only have the bulk square meter size.</p>
+                        </div>
                     </div>
 
                     <div class="md:col-span-2 pt-4 border-t border-gray-100">
@@ -138,7 +181,7 @@
                         <div x-data="locationSearch()" class="relative mb-4 z-10">
                             <div class="flex gap-2">
                                 <input type="text" x-model="query" @input.debounce.500ms="searchPlaces" @keydown.enter.prevent="searchPlaces"
-                                       placeholder="Search for a place or street (e.g., Binus Kemanggisan)..." 
+                                       placeholder="Search for a place or street." 
                                        class="w-full bg-white border border-gray-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 rounded-xl px-4 py-2.5 text-sm outline-none font-medium text-gray-900 shadow-sm relative z-20">
                                 <button type="button" @click="searchPlaces" class="bg-gray-900 hover:bg-gray-800 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition shadow-sm whitespace-nowrap z-20">
                                     <span x-show="!isLoading">Search Map</span>
@@ -236,7 +279,7 @@
                 </div>
             </div>
 
-            {{-- 4. Property Showcase Gallery (UPDATED WITH COVER SELECTOR) --}}
+            {{-- 4. Property Showcase Gallery --}}
             <div class="bg-white p-8 sm:p-10 rounded-[2.5rem] border border-gray-100 shadow-xl shadow-gray-50/40" x-data="galleryManager()">
                 <h3 class="text-lg font-black text-gray-900 mb-2 flex items-center gap-2">
                     <span class="w-8 h-8 rounded-xl bg-orange-50 text-orange-500 flex items-center justify-center text-sm font-bold">4</span>
@@ -252,8 +295,6 @@
 
                 <input type="file" accept="image/*" class="hidden" x-ref="replaceInput" @change="handleReplace($event)">
                 <input type="file" name="photos[]" id="final-photos" multiple class="hidden">
-                
-                {{-- Hidden input passing the chosen primary index to the backend --}}
                 <input type="hidden" name="primary_photo_index" :value="primaryIndex">
 
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
@@ -261,7 +302,6 @@
                         <div class="relative bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm animate-fade-in group"
                              :class="primaryIndex === index ? 'ring-2 ring-orange-500' : ''">
                             
-                            {{-- Interactive Cover Selector Button --}}
                             <button type="button" 
                                     @click="primaryIndex = index"
                                     :class="primaryIndex === index ? 'bg-orange-500 text-white' : 'bg-white/90 text-gray-700 hover:bg-orange-500 hover:text-white backdrop-blur'"
@@ -364,12 +404,11 @@
                 triggerReplace() { this.$refs.fileInput.click(); }
             }));
 
-            // UPDATED: Gallery Manager tracking primaryIndex
             Alpine.data('galleryManager', () => ({
                 images: [],
                 dataTransfer: new DataTransfer(),
                 replaceTargetIndex: null, 
-                primaryIndex: 0, // Defaults to the first uploaded image
+                primaryIndex: 0, 
 
                 addFiles(event) {
                     const files = event.target.files;
@@ -389,14 +428,11 @@
 
                 removeFile(index) {
                     this.images.splice(index, 1);
-                    
-                    // Smart index shifting if an image is deleted
                     if (this.primaryIndex === index) {
-                        this.primaryIndex = 0; // Reset to the first available image
+                        this.primaryIndex = 0;
                     } else if (this.primaryIndex > index) {
-                        this.primaryIndex--; // Shift left if a preceding image was removed
+                        this.primaryIndex--;
                     }
-
                     this.rebuildDataTransfer();
                 },
 

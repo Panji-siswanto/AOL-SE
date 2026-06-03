@@ -8,12 +8,14 @@ use App\Models\Rent;
 use App\Models\RentRequest;
 use App\Models\SpaceRegistration;
 use App\Models\User;
+use App\Traits\Filterable;
+use App\Traits\Searchable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Space extends Model
 {
-    use HasFactory;
+    use HasFactory, Searchable, Filterable;
 
     protected $fillable = [
         'owner_id',
@@ -21,10 +23,23 @@ class Space extends Model
         'registration_id',
         'name',
         'description',
-        'size',
+        'length',
+        'width',
+        'area',
         'price',
         'status_id',
     ];
+
+    public function getFormattedSizeAttribute()
+    {
+        if ($this->length && $this->width) {
+            $l = $this->length + 0;
+            $w = $this->width + 0;
+            return "{$l} x {$w} m";
+        }
+        $a = $this->area + 0;
+        return "{$a} m²";
+    }
 
     // belongs to owner
     public function owner()

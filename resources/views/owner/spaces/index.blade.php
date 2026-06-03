@@ -9,7 +9,7 @@
                 <p class="text-sm text-gray-500 mt-1">Manage your active marketplace listings and track registration applications.</p>
             </div>
             
-            <a href="{{ route('space-registrations.create') }}" class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-2xl font-bold text-sm shadow-lg shadow-orange-500/30 transition-all active:scale-95 flex items-center gap-2">
+            <a href="{{ route('owner.spaces.registrations.create') }}" class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-2xl font-bold text-sm shadow-lg shadow-orange-500/30 transition-all active:scale-95 flex items-center gap-2">
                 <span>+</span> List Another Space
             </a>
         </div>
@@ -34,7 +34,7 @@
         <div x-show="activeTab === 'live'" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0">
             
             {{-- Search & Filter for LIVE SPACES --}}
-            <form method="GET" action="{{ route('space-registrations.index') }}" class="flex flex-wrap w-full items-center gap-3 mb-6 bg-gray-50 p-3 rounded-2xl border border-gray-100">
+            <form method="GET" action="{{ route('owner.spaces.index') }}" class="flex flex-wrap w-full items-center gap-3 mb-6 bg-gray-50 p-3 rounded-2xl border border-gray-100">
                 <input type="hidden" name="tab" value="live">
                 
                 <div class="relative flex-grow sm:max-w-xs">
@@ -57,7 +57,7 @@
                 </select>
 
                 @if(request('tab') === 'live' && (request('search') || request('status') || request('sort_date') === 'oldest'))
-                    <a href="{{ route('space-registrations.index', ['tab' => 'live']) }}" class="px-4 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl text-sm font-bold transition">
+                    <a href="{{ route('owner.spaces.index', ['tab' => 'live']) }}" class="px-4 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl text-sm font-bold transition">
                         Clear
                     </a>
                 @endif
@@ -100,7 +100,7 @@
         <div x-show="activeTab === 'applications'" x-cloak x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0">
             
             {{-- Search & Filter for APPLICATIONS --}}
-            <form method="GET" action="{{ route('space-registrations.index') }}" class="flex flex-wrap w-full items-center gap-3 mb-6 bg-gray-50 p-3 rounded-2xl border border-gray-100">
+            <form method="GET" action="{{ route('owner.spaces.index') }}" class="flex flex-wrap w-full items-center gap-3 mb-6 bg-gray-50 p-3 rounded-2xl border border-gray-100">
                 <input type="hidden" name="tab" value="applications">
                 
                 <div class="relative flex-grow sm:max-w-xs">
@@ -124,7 +124,7 @@
                 </select>
 
                 @if(request('tab') === 'applications' && (request('search') || request('status') || request('sort_date') === 'oldest'))
-                    <a href="{{ route('space-registrations.index', ['tab' => 'applications']) }}" class="px-4 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl text-sm font-bold transition">
+                    <a href="{{ route('owner.spaces.index', ['tab' => 'applications']) }}" class="px-4 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl text-sm font-bold transition">
                         Clear
                     </a>
                 @endif
@@ -175,7 +175,7 @@
                                         </span>
                                     </td>
                                     <td class="px-6 py-4 text-right">
-                                        <a href="{{ route('space-registrations.show', $reg->id) }}" class="text-xs font-bold text-gray-400 hover:text-gray-900 transition">View Details &rarr;</a>
+                                        <a href="{{ route('owner.spaces.registrations.show-registration', $reg->id) }}" class="text-xs font-bold text-gray-400 hover:text-gray-900 transition">View Details &rarr;</a>
                                     </td>
                                 </tr>
                             @endforeach

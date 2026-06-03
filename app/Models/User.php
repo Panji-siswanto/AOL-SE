@@ -106,7 +106,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     // app/Models/User.php
 
- public function getActionBtnAttribute(): ?object
+public function getActionBtnAttribute(): ?object
     {
         $status = $this->ver_status;
         $isOwner = $this->hasRole('owner');
@@ -128,7 +128,8 @@ class User extends Authenticatable implements MustVerifyEmail
             return (object) [
                 'label' => 'My Listings',
                 'color' => 'bg-gray-900 hover:bg-gray-800 shadow-gray-900/30',
-                'url' => route('space-registrations.index') 
+                // CHANGED: Now points to the new Owner dashboard route
+                'url' => route('owner.spaces.index') 
             ];
         }
 
@@ -137,7 +138,8 @@ class User extends Authenticatable implements MustVerifyEmail
             return (object) [
                 'label' => 'List Your Space',
                 'color' => 'bg-[#009485] hover:bg-teal-700 shadow-teal-500/30',
-                'url' => route('space-registrations.create') 
+                // CHANGED: Now points to the new Owner registration route
+                'url' => route('owner.spaces.registrations.create') 
             ];
         }
 

@@ -18,11 +18,12 @@ class SpaceRegistration extends Model
         'location_id',
         'name',
         'description',
-        'size',
+        'length',
+        'width',
+        'area',
         'status_id',
     ];
 
-       
     protected $searchable = [
         'name',
         'owner.name',
@@ -30,6 +31,17 @@ class SpaceRegistration extends Model
         'location.province',
         'location.address',
     ];
+
+    public function getFormattedSizeAttribute()
+    {
+        if ($this->length && $this->width) {
+            $l = $this->length + 0;
+            $w = $this->width + 0;
+            return "{$l} x {$w} m";
+        }
+        $a = $this->area + 0;
+        return "{$a} m²";
+    }
 
     // belongs to user (owner)
     public function owner(){
