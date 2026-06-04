@@ -10,31 +10,33 @@ class StatusSeeder extends Seeder
     public function run(): void
     {
         $statuses = [
-            // 1-3: Registration
-            ['context' => 'registration', 'code' => 'reg_pending', 'name' => 'Pending'],
+            // 1-3: Registration Applications
+            ['context' => 'registration', 'code' => 'reg_pending', 'name' => 'Pending Review'],
             ['context' => 'registration', 'code' => 'reg_approved', 'name' => 'Approved'],
             ['context' => 'registration', 'code' => 'reg_rejected', 'name' => 'Rejected'],
 
-            // 4-5: Spaces
-            ['context' => 'spaces', 'code' => 'spc_available', 'name' => 'Available'],
-            ['context' => 'spaces', 'code' => 'spc_unavailable', 'name' => 'Unavailable'],
+            // 4-7: Live Spaces Lifecycle
+            ['context' => 'spaces', 'code' => 'spc_available', 'name' => 'Live & Available'],
+            ['context' => 'spaces', 'code' => 'spc_paused', 'name' => 'Paused (Hidden)'],
+            ['context' => 'spaces', 'code' => 'spc_unlisted', 'name' => 'Unlisted (Archived)'],
+            ['context' => 'spaces', 'code' => 'spc_suspended', 'name' => 'Suspended (Admin Action)'],
 
-            // 6-9: Rent Requests
-            ['context' => 'rent', 'code' => 'rnt_req_pending', 'name' => 'Pending'],
-            ['context' => 'rent', 'code' => 'rnt_req_accepted', 'name' => 'Accepted'],
-            ['context' => 'rent', 'code' => 'rnt_req_rejected', 'name' => 'Rejected'],
-            ['context' => 'rent', 'code' => 'rnt_req_cancelled', 'name' => 'Cancelled'],
+            // 8-11: Rent Requests (The Initial Application)
+            ['context' => 'rent_req', 'code' => 'rnt_req_pending', 'name' => 'Pending'],
+            ['context' => 'rent_req', 'code' => 'rnt_req_accepted', 'name' => 'Accepted'],
+            ['context' => 'rent_req', 'code' => 'rnt_req_rejected', 'name' => 'Rejected'],
+            ['context' => 'rent_req', 'code' => 'rnt_req_cancelled', 'name' => 'Cancelled'],
 
-            // 10-12: Rents
+            // 12-14: Active Rents (The Ongoing Contract)
             ['context' => 'rent_status', 'code' => 'rnt_ongoing', 'name' => 'Ongoing'],
             ['context' => 'rent_status', 'code' => 'rnt_completed', 'name' => 'Completed'],
             ['context' => 'rent_status', 'code' => 'rnt_cancelled', 'name' => 'Cancelled'],
 
-            // 13-14: Messages
+            // 15-16: Messages/Negotiations
             ['context' => 'rent_message', 'code' => 'msg_proposal', 'name' => 'Proposal'],
             ['context' => 'rent_message', 'code' => 'msg_response', 'name' => 'Response'],
 
-            // 15-18: User & Log Verification Statuses (Fixed Names)
+            // 17-20: User Identity Verification
             ['context' => 'user_verification', 'code' => 'usr_unverified', 'name' => 'Unverified'],
             ['context' => 'user_verification', 'code' => 'usr_verify_pending', 'name' => 'Pending Review'],
             ['context' => 'user_verification', 'code' => 'usr_verified', 'name' => 'Verified'],
@@ -42,7 +44,7 @@ class StatusSeeder extends Seeder
         ];
 
         foreach ($statuses as $status) {
-            Status::create($status);
+            Status::firstOrCreate(['code' => $status['code']], $status);
         }
     }
 }

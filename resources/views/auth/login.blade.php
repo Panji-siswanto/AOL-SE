@@ -25,7 +25,6 @@
                      <x-input-error :messages="$errors->get('auth_id')" class="mt-2" />
                 </div>
 
-                {{-- Password --}}
               {{-- Password --}}
                 <div class="mb-5">
                     <x-input-label for="password" :value="__('Password')" class="text-xl font-semibold text-gray-700 mb-2"/>

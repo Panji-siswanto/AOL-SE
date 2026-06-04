@@ -88,7 +88,8 @@ class ListingRequestController extends Controller
                 'price' => $basePrice, 
                 'status_id' => Status::where('code', 'spc_available')->value('id'),
             ]);
-
+            $registration->photos()->update(['space_id' => $space->id]);
+            
             $user = User::findOrFail($registration->owner_id);
             if (!$user->hasRole('owner')) {
                 $user->assignRole('owner');

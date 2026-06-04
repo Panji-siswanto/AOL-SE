@@ -33,7 +33,7 @@ class MarketplaceSeeder extends Seeder
         Role::firstOrCreate(['name' => 'renter']);
         Role::firstOrCreate(['name' => 'owner']);
 
-        // 3. User Creation (Using requested credentials & verified emails)
+        // 3. User Creation 
         $password = Hash::make('pass123');
         
         $owner1 = User::firstOrCreate(
@@ -78,170 +78,132 @@ class MarketplaceSeeder extends Seeder
         // ---------------------------------------------------------
         // SCENARIO 1: Owner 1 (Live Space - "Booth Tuku Kemanggisan")
         // ---------------------------------------------------------
-        $loc1 = Location::firstOrCreate([
-            'address' => 'Jl. Kemanggisan Ilir III No. 45, Palmerah',
-        ], [
-            'city' => 'Jakarta Barat',
-            'province' => 'DKI Jakarta',
-            'latitude' => -6.1947,
-            'longitude' => 106.7865,
-        ]);
+        $loc1 = Location::firstOrCreate(
+            ['address' => 'Jl. Kemanggisan Ilir III No. 45, Palmerah'], 
+            ['city' => 'Jakarta Barat', 'province' => 'DKI Jakarta', 'latitude' => -6.1947, 'longitude' => 106.7865]
+        );
 
-        $reg1 = SpaceRegistration::firstOrCreate([
-            'name' => 'Booth Area Tuku Kemanggisan',
-        ], [
-            'owner_id' => $owner1->id,
-            'location_id' => $loc1->id,
-            'description' => 'Lapak strategis persis di sebelah kedai Kopi Tuku. Traffic mahasiswa Binus sangat ramai setiap hari.',
-            'length' => 2.0,
-            'width' => 2.0,
-            'area' => 4.0, 
-            'status_id' => $regApproved,
-        ]);
+        $reg1 = SpaceRegistration::firstOrCreate(
+            ['name' => 'Booth Area Tuku Kemanggisan'], 
+            ['owner_id' => $owner1->id, 'location_id' => $loc1->id, 'description' => 'Lapak strategis persis di sebelah kedai Kopi Tuku.', 'length' => 2.0, 'width' => 2.0, 'area' => 4.0, 'status_id' => $regApproved]
+        );
 
         if ($reg1->wasRecentlyCreated) {
             $reg1->prices()->create(['pricing_type_id' => $monthlyPricing, 'price' => 1500000]);
             
-            // Seed Legal Documents
             $reg1->documents()->createMany([
                 ['document_type_id' => $suratTanahTypeId, 'file_path' => 'dummy/sertifikat_1.pdf', 'description' => 'Sertifikat Hak Milik'],
-                ['document_type_id' => $perjanjianSewaTypeId, 'file_path' => 'dummy/izin_1.pdf', 'description' => 'Surat Izin RT/RW'],
             ]);
 
-            // Seed Cover Photo
-            $reg1->photos()->create([
-                'file_path' => 'dummy/space_1.jpg',
-                'description' => 'Tampak Depan Lapak',
-                'is_primary' => true,
-            ]);
+            $reg1->photos()->create(['file_path' => 'dummy/space_1.jpg', 'description' => 'Tampak Depan', 'is_primary' => true]);
 
-            Space::create([
-                'owner_id' => $owner1->id,
-                'location_id' => $loc1->id,
-                'registration_id' => $reg1->id,
-                'name' => $reg1->name,
-                'description' => $reg1->description,
-                'length' => 2.0,
-                'width' => 2.0,
-                'area' => 4.0,
-                'price' => 1500000,
-                'status_id' => $spcAvailable,
+            $space = Space::create([
+                'owner_id' => $owner1->id, 'location_id' => $loc1->id, 'registration_id' => $reg1->id, 'name' => $reg1->name, 'description' => $reg1->description, 'length' => 2.0, 'width' => 2.0, 'area' => 4.0, 'price' => 1500000, 'status_id' => $spcAvailable,
             ]);
+            $reg1->photos()->update(['space_id' => $space->id]);
         }
 
         // ---------------------------------------------------------
         // SCENARIO 2: Owner 2 (Pending Registration - "Lapak Tenda")
         // ---------------------------------------------------------
-        $loc2 = Location::firstOrCreate([
-            'address' => 'Jl. Boulevard Alam Sutera, Serpong',
-        ], [
-            'city' => 'Tangerang Selatan',
-            'province' => 'Banten',
-            'latitude' => -6.2238,
-            'longitude' => 106.6492,
-        ]);
+        $loc2 = Location::firstOrCreate(
+            ['address' => 'Jl. Boulevard Alam Sutera, Serpong'], 
+            ['city' => 'Tangerang Selatan', 'province' => 'Banten', 'latitude' => -6.2238, 'longitude' => 106.6492]
+        );
 
-        $reg2 = SpaceRegistration::firstOrCreate([
-            'name' => 'Lapak Tenda Malam Alam Sutera',
-        ], [
-            'owner_id' => $owner2->id,
-            'location_id' => $loc2->id,
-            'description' => 'Hanya tersedia malam hari. Area luas bisa untuk gelar tikar atau tenda pecel lele. Parkiran luas.',
-            'length' => null, 
-            'width' => null,
-            'area' => 15.5,
-            'status_id' => $regPending,
-        ]);
+        $reg2 = SpaceRegistration::firstOrCreate(
+            ['name' => 'Lapak Tenda Malam Alam Sutera'], 
+            ['owner_id' => $owner2->id, 'location_id' => $loc2->id, 'description' => 'Hanya tersedia malam hari. Area luas.', 'length' => null, 'width' => null, 'area' => 15.5, 'status_id' => $regPending]
+        );
 
         if ($reg2->wasRecentlyCreated) {
             $reg2->prices()->create(['pricing_type_id' => $dailyPricing, 'price' => 50000]);
-
-            $reg2->documents()->createMany([
-                ['document_type_id' => $suratTanahTypeId, 'file_path' => 'dummy/sertifikat_2.pdf', 'description' => 'Sertifikat Tanah Kosong'],
-            ]);
-
-            $reg2->photos()->create([
-                'file_path' => 'dummy/space_2.jpg',
-                'description' => 'Kondisi Lahan Malam Hari',
-                'is_primary' => true,
-            ]);
+            $reg2->documents()->createMany([['document_type_id' => $suratTanahTypeId, 'file_path' => 'dummy/sertifikat_2.pdf', 'description' => 'Sertifikat']]);
+            $reg2->photos()->create(['file_path' => 'dummy/space_2.jpg', 'description' => 'Malam Hari', 'is_primary' => true]);
         }
 
         // ---------------------------------------------------------
         // SCENARIO 3: Owner 3 (Live Space AND Pending Registration)
         // ---------------------------------------------------------
-        $loc3 = Location::firstOrCreate([
-            'address' => 'Pasar Modern BSD City',
-        ], [
-            'city' => 'Tangerang',
-            'province' => 'Banten',
-            'latitude' => -6.3056,
-            'longitude' => 106.6669,
-        ]);
+        $loc3 = Location::firstOrCreate(
+            ['address' => 'Pasar Modern BSD City'], 
+            ['city' => 'Tangerang', 'province' => 'Banten', 'latitude' => -6.3056, 'longitude' => 106.6669]
+        );
 
-        $reg3Live = SpaceRegistration::firstOrCreate([
-            'name' => 'Kios Pasar Modern BSD',
-        ], [
-            'owner_id' => $owner3->id,
-            'location_id' => $loc3->id,
-            'description' => 'Kios permanen di dalam pasar modern BSD. Rolling door aman, listrik 900W.',
-            'length' => 3.0,
-            'width' => 4.0,
-            'area' => 12.0,
-            'status_id' => $regApproved,
-        ]);
+        $reg3Live = SpaceRegistration::firstOrCreate(
+            ['name' => 'Kios Pasar Modern BSD'], 
+            ['owner_id' => $owner3->id, 'location_id' => $loc3->id, 'description' => 'Kios permanen di dalam pasar.', 'length' => 3.0, 'width' => 4.0, 'area' => 12.0, 'status_id' => $regApproved]
+        );
 
         if ($reg3Live->wasRecentlyCreated) {
             $reg3Live->prices()->create(['pricing_type_id' => $monthlyPricing, 'price' => 3000000]);
-            
-            $reg3Live->documents()->createMany([
-                ['document_type_id' => $suratTanahTypeId, 'file_path' => 'dummy/sertifikat_3a.pdf', 'description' => 'Sertifikat Kios'],
-            ]);
+            $reg3Live->documents()->createMany([['document_type_id' => $suratTanahTypeId, 'file_path' => 'dummy/sertifikat_3a.pdf', 'description' => 'Sertifikat Kios']]);
+            $reg3Live->photos()->create(['file_path' => 'dummy/space_3a.jpg', 'description' => 'Tampak Kios', 'is_primary' => true]);
 
-            $reg3Live->photos()->create([
-                'file_path' => 'dummy/space_3a.jpg',
-                'description' => 'Tampak Kios Terbuka',
-                'is_primary' => true,
+            $space = Space::create([
+                'owner_id' => $owner3->id, 'location_id' => $loc3->id, 'registration_id' => $reg3Live->id, 'name' => $reg3Live->name, 'description' => $reg3Live->description, 'length' => 3.0, 'width' => 4.0, 'area' => 12.0, 'price' => 3000000, 'status_id' => $spcAvailable,
             ]);
-
-            Space::create([
-                'owner_id' => $owner3->id,
-                'location_id' => $loc3->id,
-                'registration_id' => $reg3Live->id,
-                'name' => $reg3Live->name,
-                'description' => $reg3Live->description,
-                'length' => 3.0,
-                'width' => 4.0,
-                'area' => 12.0,
-                'price' => 3000000,
-                'status_id' => $spcAvailable,
-            ]);
+            $reg3Live->photos()->update(['space_id' => $space->id]);
         }
 
-        $reg3Pending = SpaceRegistration::firstOrCreate([
-            'name' => 'Lahan Emperan BSD',
-        ], [
-            'owner_id' => $owner3->id,
-            'location_id' => $loc3->id,
-            'description' => 'Lahan kosong di depan kios saya. Cocok untuk jualan pakai gerobak kecil.',
-            'length' => 1.5,
-            'width' => 2.0,
-            'area' => 3.0,
-            'status_id' => $regPending,
-        ]);
+        $reg3Pending = SpaceRegistration::firstOrCreate(
+            ['name' => 'Lahan Emperan BSD'], 
+            ['owner_id' => $owner3->id, 'location_id' => $loc3->id, 'description' => 'Lahan kosong depan kios.', 'length' => 1.5, 'width' => 2.0, 'area' => 3.0, 'status_id' => $regPending]
+        );
 
         if ($reg3Pending->wasRecentlyCreated) {
             $reg3Pending->prices()->create(['pricing_type_id' => $monthlyPricing, 'price' => 800000]);
+            $reg3Pending->documents()->createMany([['document_type_id' => $perjanjianSewaTypeId, 'file_path' => 'dummy/izin_3b.pdf', 'description' => 'Izin Gelar Lapak']]);
+            $reg3Pending->photos()->create(['file_path' => 'dummy/space_3b.jpg', 'description' => 'Area Emperan', 'is_primary' => true]);
+        }
 
-            $reg3Pending->documents()->createMany([
-                ['document_type_id' => $perjanjianSewaTypeId, 'file_path' => 'dummy/izin_3b.pdf', 'description' => 'Izin Gelar Lapak dari Pengelola'],
-            ]);
+        // ---------------------------------------------------------
+        // SCENARIO 4: MASS GENERATION (New Live Spaces for Discovery Feed)
+        // ---------------------------------------------------------
+        $newLiveSpaces = [
+            // Owner 1 Additions
+            ['owner' => $owner1, 'name' => 'Lapak Kuliner Binus Syahdan', 'address' => 'Jl. K.H. Syahdan No. 9', 'city' => 'Jakarta Barat', 'province' => 'DKI Jakarta', 'lat' => -6.2001, 'lng' => 106.7854, 'area' => 6.0, 'price' => 1200000, 'pricing' => $monthlyPricing, 'photo' => 'dummy/space_4.jpg'],
+            ['owner' => $owner1, 'name' => 'Booth Pameran Mal Taman Anggrek', 'address' => 'Letjen S. Parman St No.28', 'city' => 'Jakarta Barat', 'province' => 'DKI Jakarta', 'lat' => -6.1785, 'lng' => 106.7922, 'area' => 9.0, 'price' => 500000, 'pricing' => $dailyPricing, 'photo' => 'dummy/space_5.jpg'],
+            // Owner 2 Additions
+            ['owner' => $owner2, 'name' => 'Area Foodtruck Alam Sutera', 'address' => 'Kawasan CBD Alam Sutera', 'city' => 'Tangerang', 'province' => 'Banten', 'lat' => -6.2250, 'lng' => 106.6500, 'area' => 18.0, 'price' => 3500000, 'pricing' => $monthlyPricing, 'photo' => 'dummy/space_6.jpg'],
+            ['owner' => $owner2, 'name' => 'Kios Tenda Pasar Lama', 'address' => 'Kawasan Kuliner Pasar Lama', 'city' => 'Tangerang', 'province' => 'Banten', 'lat' => -6.1702, 'lng' => 106.6333, 'area' => 4.0, 'price' => 75000, 'pricing' => $dailyPricing, 'photo' => 'dummy/space_7.jpg'],
+            // Owner 3 Additions
+            ['owner' => $owner3, 'name' => 'Ruko Sentra Gading Serpong', 'address' => 'Jl. Boulevard Gading Serpong', 'city' => 'Tangerang', 'province' => 'Banten', 'lat' => -6.2400, 'lng' => 106.6288, 'area' => 24.0, 'price' => 6000000, 'pricing' => $monthlyPricing, 'photo' => 'dummy/space_8.jpg'],
+            ['owner' => $owner3, 'name' => 'Emperan Ruko Karawaci', 'address' => 'Supermal Karawaci Area', 'city' => 'Tangerang', 'province' => 'Banten', 'lat' => -6.2260, 'lng' => 106.6074, 'area' => 2.5, 'price' => 850000, 'pricing' => $monthlyPricing, 'photo' => 'dummy/space_9.jpg'],
+            ['owner' => $owner3, 'name' => 'Lapak Stasiun Rawa Buntu', 'address' => 'Area Parkir Stasiun Rawa Buntu', 'city' => 'Tangerang Selatan', 'province' => 'Banten', 'lat' => -6.3194, 'lng' => 106.6836, 'area' => 3.0, 'price' => 100000, 'pricing' => $dailyPricing, 'photo' => 'dummy/space_10.jpg'],
+        ];
 
-            $reg3Pending->photos()->create([
-                'file_path' => 'dummy/space_3b.jpg',
-                'description' => 'Area Emperan',
-                'is_primary' => true,
-            ]);
+        foreach ($newLiveSpaces as $data) {
+            $loc = Location::firstOrCreate(
+                ['address' => $data['address']], 
+                ['city' => $data['city'], 'province' => $data['province'], 'latitude' => $data['lat'], 'longitude' => $data['lng']]
+            );
+
+            $reg = SpaceRegistration::firstOrCreate(
+                ['name' => $data['name']], 
+                ['owner_id' => $data['owner']->id, 'location_id' => $loc->id, 'description' => 'Lapak strategis tersedia untuk disewakan segera.', 'length' => null, 'width' => null, 'area' => $data['area'], 'status_id' => $regApproved]
+            );
+
+            if ($reg->wasRecentlyCreated) {
+                $reg->prices()->create(['pricing_type_id' => $data['pricing'], 'price' => $data['price']]);
+                $reg->documents()->create(['document_type_id' => $perjanjianSewaTypeId, 'file_path' => 'dummy/izin_mass.pdf', 'description' => 'Izin Auto-Generated']);
+                $reg->photos()->create(['file_path' => $data['photo'], 'description' => 'Cover Photo', 'is_primary' => true]);
+
+                $space = Space::create([
+                    'owner_id' => $data['owner']->id,
+                    'location_id' => $loc->id,
+                    'registration_id' => $reg->id,
+                    'name' => $reg->name,
+                    'description' => $reg->description,
+                    'length' => null,
+                    'width' => null,
+                    'area' => $data['area'],
+                    'price' => $data['price'],
+                    'status_id' => $spcAvailable,
+                ]);
+
+                $reg->photos()->update(['space_id' => $space->id]);
+            }
         }
     }
 }

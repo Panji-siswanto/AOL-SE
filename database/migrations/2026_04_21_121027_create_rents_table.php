@@ -6,9 +6,6 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('rents', function (Blueprint $table) {
@@ -23,6 +20,17 @@ return new class extends Migration
                 ->constrained('spaces')
                 ->cascadeOnDelete();
 
+            // (to store space details at time of rent) 
+            $table->string('space_name');
+            $table->decimal('price', 15, 2); 
+            $table->string('pricing_type');  
+            $table->decimal('space_length', 8, 2)->nullable();
+            $table->decimal('space_width', 8, 2)->nullable();
+            $table->decimal('space_area', 8, 2);
+            $table->text('space_address'); 
+            $table->decimal('space_latitude', 10, 7);
+            $table->decimal('space_longitude', 11, 7);
+
             $table->foreignId('renter_id')
                 ->constrained('users')
                 ->cascadeOnDelete();
@@ -36,9 +44,7 @@ return new class extends Migration
             $table->timestamps();
         });
     }
-    /**
-     * Reverse the migrations.
-     */
+
     public function down(): void
     {
         Schema::dropIfExists('rents');

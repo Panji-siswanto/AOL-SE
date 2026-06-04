@@ -95,4 +95,18 @@ class Space extends Model
     {
         return $this->hasMany(SpacePhoto::class);
     }
+
+    public function getCoverPhotoUrlAttribute()
+    {
+        $photo = $this->photos->where('is_primary', true)->first() 
+              ?? $this->photos->first()
+              ?? $this->registration->photos->where('is_primary', true)->first() 
+              ?? $this->registration->photos->first();
+
+        if ($photo) {
+            return asset('storage/' . $photo->file_path);
+        }
+
+        return 'https://ui-avatars.com/api/?name='.urlencode($this->name).'&background=E5E7EB&color=9CA3AF&size=512';
+    }
 }

@@ -6,23 +6,25 @@ use App\Http\Controllers\Controller;
 use App\Models\SpaceRegistration;
 use App\Models\Status;
 use App\Models\User;
-use App\Models\VerificationLog;
 use Illuminate\Support\Facades\Auth;
 
 class DashboardController extends Controller
 {
     public function index()
     {
-        // 1. Identity verifications waiting for approval
-        $pendingVerifications = VerificationLog::where('status_id', Status::USR_VERIFY_PENDING)->count();
-
-        // 2. New space submissions waiting for admin moderation
-        $pendingListings = SpaceRegistration::where('status_id', Status::REG_PENDING)->count();
-
-        // 3. Total registered accounts
-        $totalUsers = User::count();
+        // 1. Fetch the authenticated Admin user
         $Admin = Auth::user();
 
-        return view('admin.index', compact('pendingVerifications', 'pendingListings', 'totalUsers','Admin'));
+        // 2. Count Pending Space Listings
+        $pendingRegStatusId = Status::where('code', 'reg_pending')->value('id');
+        $pendingListings = SpaceRegistration::where('status_id', $pendingRegStatusId)->count();
+
+        // 3. Count Pending User Verifications
+        $pendingVerStatusId = Status::where('code', 'usr_verify_pending')->value('id');
+        $pendingVerifications = User::where('ver_status', $pendingVerStatusId)->count();
+
+        // Pass exactly what the Blade template expects
+        // Note: Change 'admin.index' to 'admin.dashboard' if your file is named dashboard.blade.php
+        return view('admin.index', compact('Admin', 'pendingListings', 'pendingVerifications'));
     }
 }

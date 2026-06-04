@@ -1,23 +1,18 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-
-// Imports that don't share names
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\VerificationController;
 use App\Http\Controllers\Owner\SpaceRegistrationController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ListingRequestController;
 use App\Http\Controllers\Admin\UserVerificationRequestController;
+use App\Http\Controllers\Owner\SpaceController;
+use App\Http\Controllers\Public\SpaceDiscoveryController;
 
 
-Route::get('/', function () {
-    if (auth()->check() && auth()->user()->hasRole('admin')) {
-        return redirect()->route('admin.dashboard');
-    }
-    return view('dashboard');
-})->name('dashboard');
-
+Route::get('/', [SpaceDiscoveryController::class, 'index'])->name('dashboard');
+Route::get('/spaces/{space}', [SpaceDiscoveryController::class, 'show'])->name('spaces.show');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     
@@ -33,8 +28,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 Route::middleware(['auth', 'verified'])->prefix('owner')->name('owner.')->group(function () {
     
     // Live Spaces Management (Writing the full path here too!)
-    Route::resource('spaces', \App\Http\Controllers\Owner\SpaceController::class);
-
+    Route::resource('spaces', SpaceController::class);
+    Route::patch('spaces/{space}/status', [SpaceController::class, 'updateStatus'])->name('spaces.status.update');
+    
     // Space Registrations (Applications / Moderation Queue)
     Route::prefix('spaces/registrations')->name('spaces.registrations.')->group(function () {
         Route::get('/create', [SpaceRegistrationController::class, 'create'])->name('create');
@@ -43,6 +39,26 @@ Route::middleware(['auth', 'verified'])->prefix('owner')->name('owner.')->group(
         Route::post('/{registration}/photos/reorder', [SpaceRegistrationController::class, 'reorderPhotos'])->name('photos.reorder');
     });
 
+});
+
+
+
+// Admin
+Route::prefix('admin')
+    ->name('admin.')
+    ->middleware(['auth', 'role:admin']) 
+    ->group(function () {
+        
+        // Main Admin Landing Page
+        Route::get('/dashboard', [\App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('dashboard');
+        
+        // Listing Requests (Using your existing controller)
+        Route::get('/listing-requests', [\App\Http\Controllers\Admin\ListingRequestController::class, 'index'])->name('listing-requests.index');
+        Route::get('/listing-requests/history', [\App\Http\Controllers\Admin\ListingRequestController::class, 'history'])->name('listing-requests.history');
+        
+        Route::post('/listing-requests/{registration}/approve', [\App\Http\Controllers\Admin\ListingRequestController::class, 'approve'])->name('listing-requests.approve');
+        Route::post('/listing-requests/{registration}/reject', [\App\Http\Controllers\Admin\ListingRequestController::class, 'reject'])->name('listing-requests.reject');
+        
 });
 
 // ADMIN

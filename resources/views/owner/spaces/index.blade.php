@@ -63,7 +63,7 @@
                 @endif
             </form>
 
-            {{-- Live Spaces Grid --}}
+           {{-- Live Spaces Grid --}}
             @if($spaces->isEmpty())
                 <div class="bg-white rounded-[2rem] border border-gray-100 p-12 text-center shadow-sm">
                     <div class="w-20 h-20 bg-teal-50 text-teal-500 rounded-3xl flex items-center justify-center text-3xl mx-auto mb-4">🏪</div>
@@ -72,23 +72,28 @@
                 </div>
             @else
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    @foreach($spaces as $space)
-                        <div class="bg-white rounded-[2rem] border border-gray-100 shadow-sm p-5 hover:shadow-xl transition-all">
-                            <div class="w-full h-40 bg-gray-100 rounded-2xl mb-4 overflow-hidden relative">
-                                <img src="https://images.unsplash.com/photo-1582037928769-181f2644ecb7?auto=format&fit=crop&q=80&w=600" class="w-full h-full object-cover opacity-80">
-                                <div class="absolute top-3 left-3 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider {{ $space->status->code === 'spc_available' ? 'text-teal-600' : 'text-red-500' }}">
-                                    {{ $space->status->name }}
-                                </div>
-                            </div>
+                @foreach($spaces as $space)
+                        <div class="bg-white rounded-[2rem] border border-gray-100 shadow-sm p-5 hover:shadow-xl transition-all flex flex-col">
                             
-                            <h3 class="text-lg font-bold text-gray-900 truncate">{{ $space->name }}</h3>
-                            <p class="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                                📍 {{ $space->location->city }}, {{ $space->location->province }}
-                            </p>
+                            {{-- Clicking the image or title goes to SHOW (Preview) --}}
+                            <a href="{{ route('owner.spaces.show', $space->id) }}" class="block group flex-grow">
+                                <div class="w-full h-40 bg-gray-100 rounded-2xl mb-4 overflow-hidden relative">
+                                    <img src="{{ $space->cover_photo_url }}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105">
+                                    <div class="absolute top-3 left-3 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider {{ $space->status->code === 'spc_available' ? 'text-teal-600' : 'text-red-500' }}">
+                                        {{ $space->status->name }}
+                                    </div>
+                                </div>
+                                <h3 class="text-lg font-bold text-gray-900 truncate group-hover:text-teal-600 transition" title="{{ $space->name }}">{{ $space->name }}</h3>
+                                <p class="text-xs text-gray-500 mt-1 flex items-center gap-1 truncate">
+                                    📍 {{ $space->location->city }}, {{ $space->location->province }}
+                                </p>
+                            </a>
                             
                             <div class="mt-4 pt-4 border-t border-gray-50 flex justify-between items-center">
                                 <span class="text-sm font-black text-gray-900">Rp {{ number_format($space->price, 0, ',', '.') }}</span>
-                                <button class="text-xs font-bold text-[#009485] bg-teal-50 px-4 py-2 rounded-xl hover:bg-teal-100 transition">Manage</button>
+                                
+                                {{-- Clicking Manage goes to EDIT (The Form) --}}
+                                <a href="{{ route('owner.spaces.edit', $space->id) }}" class="text-xs font-bold text-[#009485] bg-teal-50 px-5 py-2.5 rounded-xl hover:bg-teal-100 transition active:scale-95">Manage</a>
                             </div>
                         </div>
                     @endforeach
