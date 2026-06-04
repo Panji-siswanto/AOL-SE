@@ -21,7 +21,6 @@ class AuthenticatedSessionController extends Controller
         $request->authenticate();
         $request->session()->regenerate();
 
-        // ROUTING SYNC: Check role and redirect
         if ($request->user()->hasRole('admin')) {
             return redirect()->intended(route('admin.dashboard'));
         }

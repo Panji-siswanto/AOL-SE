@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
-use App\Models\Space;
-use App\Models\SpaceRegistration;
 use App\Models\Bookmark;
-use App\Models\RentRequest;
+use App\Models\RegistrationLog;
 use App\Models\Rent;
 use App\Models\RentMessage;
-use App\Models\RegistrationLog;
+use App\Models\RentRequest;
+use App\Models\Space;
+use App\Models\SpaceRegistration;
+use App\Models\Status;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -16,7 +17,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
-    
+
 #[Fillable(['name',
     'username',
     'email',
@@ -28,134 +29,98 @@ use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
-    /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable, HasRoles;
 
-    // spaces owned by user
-    public function spaces()
-    {
+    public function spaces(){
         return $this->hasMany(Space::class, 'owner_id');
-}
+    }
 
-    // space registrations submitted by user
-    public function spaceRegistrations()
-    {
+    public function spaceRegistrations(){
         return $this->hasMany(SpaceRegistration::class, 'owner_id');
     }
 
-    // bookmarks
-    public function bookmarks()
-    {
+    public function bookmarks(){
         return $this->hasMany(Bookmark::class);
     }
 
-    // rent requests as renter
-    public function rentRequests()
-    {
+    public function rentRequests(){
         return $this->hasMany(RentRequest::class, 'renter_id');
     }
 
-    // rents as renter
-    public function rents()
-    {
+    public function rents(){
         return $this->hasMany(Rent::class, 'renter_id');
     }
 
-    // messages sent
-    public function rentMessages()
-    {
+    public function rentMessages(){
         return $this->hasMany(RentMessage::class, 'sender_id');
     }
 
-    // admin logs (if user is admin)
-    public function registrationLogs()
-    {
+    public function registrationLogs(){
         return $this->hasMany(RegistrationLog::class, 'admin_id');
     }
 
-    /**
-     * Get all verification documents uploaded by the user.
-     */
-    public function documents()
-    {
+    public function documents(){
         return $this->hasMany(UserDocument::class);
     }
 
-    public function verificationStatus()
-    {
+    public function verificationStatus(){
         return $this->belongsTo(Status::class, 'ver_status');
     }
 
+    public function bookmarkedSpaces(){
+        return $this->belongsToMany(Space::class, 'bookmarks', 'user_id', 'space_id')
+            ->withTimestamps();
+    }
 
-    public function getIsOwnerAttribute(): bool
-    {
-        // A user is an owner if they have the 'owner' role via Spatie
+    public function getIsOwnerAttribute(): bool{
         return $this->hasRole('owner');
     }
 
-    public function getIsVerifiedAttribute(): bool
-    {
-        // A user is verified regardless of role if their status is verified
-        return $this->ver_status === \App\Models\Status::USR_VERIFIED;
+    public function getIsVerifiedAttribute(): bool{
+        return $this->ver_status === Status::USR_VERIFIED;
     }
 
-    public function getIsPendingVerificationAttribute(): bool
-    {
-        return $this->ver_status === \App\Models\Status::USR_VERIFY_PENDING;
+    public function getIsPendingVerificationAttribute(): bool{
+        return $this->ver_status === Status::USR_VERIFY_PENDING;
     }
 
-    
-
-
-    public function getActionBtnAttribute(): ?object
-    {
+    public function getActionBtnAttribute(): ?object{
         $status = $this->ver_status;
         $isOwner = $this->hasRole('owner');
-        $hasRegistrations = \App\Models\SpaceRegistration::where('owner_id', $this->id)->exists();
+        $hasRegistrations = SpaceRegistration::where('owner_id', $this->id)->exists();
 
-        if ($status == \App\Models\Status::USR_UNVERIFIED || $status == \App\Models\Status::USR_REJECTED) {
+        if ($status == Status::USR_UNVERIFIED || $status == Status::USR_REJECTED) {
             return (object) [
                 'label' => 'Verify Now!',
                 'color' => 'bg-orange-500 hover:bg-orange-600 shadow-orange-500/30',
-                'url' => route('verification.index') 
+                'url'   => route('verification.index') 
             ];
         }
+
         if ($isOwner || $hasRegistrations) {
             return (object) [
                 'label' => 'My Listings',
                 'color' => 'bg-gray-900 hover:bg-gray-800 shadow-gray-900/30',
-                'url' => route('owner.spaces.index') 
+                'url'   => route('owner.spaces.index') 
             ];
         }
-        if ($status == \App\Models\Status::USR_VERIFIED && !$hasRegistrations) {
+
+        if ($status == Status::USR_VERIFIED && !$hasRegistrations) {
             return (object) [
                 'label' => 'List Your Space',
                 'color' => 'bg-[#009485] hover:bg-teal-700 shadow-teal-500/30',
-                'url' => route('owner.spaces.registrations.create') 
+                'url'   => route('owner.spaces.registrations.create') 
             ];
         }
+
         return null;
     }
 
-    public function bookmarkedSpaces()
-    {
-        return $this->belongsToMany(Space::class, 'bookmarks')->withTimestamps();
-    }
-
-
-
-
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
-    protected function casts(): array
-    {
+    protected function casts(): array{
         return [
             'email_verified_at' => 'datetime',
-            'verified_at' => 'datetime', 
-            'password' => 'hashed',
+            'verified_at'       => 'datetime', 
+            'password'          => 'hashed',
         ];
     }
 }

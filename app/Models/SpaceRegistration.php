@@ -8,6 +8,7 @@ use App\Traits\Filterable;
 use App\Traits\Searchable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class SpaceRegistration extends Model
 {
@@ -32,8 +33,33 @@ class SpaceRegistration extends Model
         'location.address',
     ];
 
-    public function getFormattedSizeAttribute()
-    {
+    // public function promoteToSpace(): Space
+    // {
+    //     return DB::transaction(function () {
+    //         $space = Space::create([
+    //             'owner_id'        => $this->owner_id,
+    //             'location_id'     => $this->location_id,
+    //             'registration_id' => $this->id,
+    //             'name'            => $this->name,
+    //             'description'     => $this->description,
+    //             'length'          => $this->length,
+    //             'width'           => $this->width,
+    //             'area'            => $this->area,
+    //             'price'           => $this->prices()->min('price') ?? 0,
+    //             'status_id'       => Status::where('code', 'spc_available')->value('id'),
+    //         ]);
+
+    //         $this->photos()->update(['space_id' => $space->id]);
+    //         if (!$this->owner->hasRole('owner')) {
+    //             $this->owner->assignRole('owner');
+    //         }
+    //         $this->update(['status_id' => Status::where('code', 'reg_approved')->value('id')]);
+
+    //         return $space;
+    //     });
+    // }
+
+    public function getFormattedSizeAttribute(){
         if ($this->length && $this->width) {
             $l = $this->length + 0;
             $w = $this->width + 0;
@@ -43,46 +69,35 @@ class SpaceRegistration extends Model
         return "{$a} m²";
     }
 
-    // belongs to user (owner)
     public function owner(){
         return $this->belongsTo(User::class, 'owner_id');
     }
-    // belongs to location
+
     public function location(){
         return $this->belongsTo(Location::class);
     }
-    // belongs to status
+
     public function status(){
         return $this->belongsTo(Status::class);
     }
-    // one registration becomes one space
+
     public function space(){
         return $this->hasOne(Space::class, 'registration_id');
     }
-    // logs
+
     public function logs(){
         return $this->hasMany(RegistrationLog::class, 'registration_id');
     }
 
-    /**
-     * legal files for this registration request.
-     */
-    public function documents()
-    {
+    public function documents(){
         return $this->hasMany(SpaceDocument::class);
     }
 
-    /**
-     * gallery photos uploaded during registration.
-     */
-    public function photos()
-    {
+    public function photos(){
         return $this->hasMany(SpacePhoto::class);
     }
 
-   public function prices()
-    {
+    public function prices(){
         return $this->hasMany(SpaceRegistrationPrice::class);
     }
-
 }

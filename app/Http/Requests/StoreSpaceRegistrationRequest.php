@@ -6,13 +6,11 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class StoreSpaceRegistrationRequest extends FormRequest
 {
-    public function authorize(): bool
-    {
+    public function authorize(): bool{
         return true; 
     }
 
-    public function rules(): array
-    {
+    public function rules(): array{
         return [
             // Location
             'city' => ['required', 'string', 'max:100'],
@@ -47,8 +45,7 @@ class StoreSpaceRegistrationRequest extends FormRequest
         ];
     }
 
-    public function messages(): array
-    {
+    public function messages(): array{
         return [
             'pricing.required' => 'You must select at least one rental rate.',
             'pricing.*.price.required_with' => 'Please enter a price for the selected rental rate.',

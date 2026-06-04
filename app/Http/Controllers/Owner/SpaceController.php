@@ -7,70 +7,59 @@ use App\Models\PricingType;
 use App\Models\Space;
 use App\Models\SpacePhoto;
 use App\Models\SpaceRegistration;
+use App\Models\Status;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
-class SpaceController extends Controller
-{
-    public function index(Request $request)
-    {
+class SpaceController extends Controller {
+
+    public function index(Request $request) {
         $activeTab = $request->input('tab', 'live');
+        $ownerId = Auth::id();
 
-        $registrationsQuery = SpaceRegistration::with(['location', 'status'])
-            ->where('owner_id', Auth::id());
-
+        // Fetch Registrations
+        $regQuery = SpaceRegistration::with(['location', 'status'])->where('owner_id', $ownerId);
         if ($activeTab === 'applications') {
-            $registrationsQuery->search($request->search)->withStatus($request->status);
-            $request->sort_date === 'oldest' ? $registrationsQuery->oldest() : $registrationsQuery->latest();
+            $regQuery->search($request->search)->withStatus($request->status);
+            $request->sort_date === 'oldest' ? $regQuery->oldest() : $regQuery->latest();
         } else {
-            $registrationsQuery->latest();
+            $regQuery->latest();
         }
-        $registrations = $registrationsQuery->get();
+        $registrations = $regQuery->get();
 
-        $spacesQuery = Space::with(['location', 'status'])
-            ->where('owner_id', Auth::id());
-            
+        // Fetch Spaces
+        $spcQuery = Space::with(['location', 'status'])->where('owner_id', $ownerId);
         if ($activeTab === 'live') {
-            if ($request->filled('search')) {
-                $spacesQuery->where('name', 'like', "%{$request->search}%");
-            }
+            if ($request->filled('search')) $spcQuery->where('name', 'like', "%{$request->search}%");
             if ($request->filled('status')) {
-                $spacesQuery->whereHas('status', function ($q) use ($request) {
-                    $q->where('code', $request->status);
-                });
+                $spcQuery->whereHas('status', fn($q) => $q->where('code', $request->status));
             }
-            $request->sort_date === 'oldest' ? $spacesQuery->oldest() : $spacesQuery->latest();
+            $request->sort_date === 'oldest' ? $spcQuery->oldest() : $spcQuery->latest();
         } else {
-            $spacesQuery->latest();
+            $spcQuery->latest();
         }
-        $spaces = $spacesQuery->get();
+        $spaces = $spcQuery->get();
 
         return view('owner.spaces.index', compact('registrations', 'spaces', 'activeTab'));
     }
 
-    public function show(Space $space)
-    {
-        if ($space->owner_id !== Auth::id()) abort(403);
-        
+    public function show(Space $space) {
+        $this->authorizeOwner($space);
         $space->load(['location', 'status', 'registration.prices.pricingType', 'photos', 'registration.photos']);
         return view('owner.spaces.show', compact('space'));
     }
 
-    public function edit(Space $space)
-    {
-        if ($space->owner_id !== Auth::id()) abort(403);
-        
+    public function edit(Space $space) {
+        $this->authorizeOwner($space);
         $pricingTypes = PricingType::all();
         $space->load(['location', 'registration.prices', 'photos', 'registration.photos']);
-        
         return view('owner.spaces.edit', compact('space', 'pricingTypes'));
     }
 
-    public function update(Request $request, Space $space)
-    {
-        if ($space->owner_id !== Auth::id()) abort(403);
+    public function update(Request $request, Space $space) {
+        $this->authorizeOwner($space);
 
         $request->validate([
             'name' => 'required|string|max:100',
@@ -80,157 +69,83 @@ class SpaceController extends Controller
             'width' => 'nullable|numeric|required_if:dimension_type,exact',
             'area' => 'nullable|numeric|required_if:dimension_type,total',
             'pricing' => 'required|array',
-            'city' => 'required|string',
-            'province' => 'required|string',
-            'address' => 'required|string',
-            'latitude' => 'required|numeric',
-            'longitude' => 'required|numeric',
         ]);
 
         DB::beginTransaction();
-
         try {
-            // 1. Update Location
-            $space->location->update([
-                'city' => $request->city,
-                'province' => $request->province,
-                'address' => $request->address,
-                'latitude' => $request->latitude,
-                'longitude' => $request->longitude,
-            ]);
-
-            // 2. Calculate Final Area
-            $calculatedArea = $request->dimension_type === 'exact' 
-                ? ($request->length * $request->width) 
-                : $request->area;
-
-            // 3. Update Space & Registration
-            $updateData = [
-                'name' => $request->name,
-                'description' => $request->description,
-                'length' => $request->dimension_type === 'exact' ? $request->length : null,
-                'width' => $request->dimension_type === 'exact' ? $request->width : null,
-                'area' => $calculatedArea,
-            ];
-            $space->update($updateData);
-            $space->registration->update($updateData);
-
-            // 4. Sync Pricing
-            $space->registration->prices()->delete(); 
-            $basePrice = null;
-            
-            foreach ($request->pricing as $typeId => $pricingData) {
-                if (isset($pricingData['is_active']) && $pricingData['is_active'] == '1' && !empty($pricingData['price'])) {
-                    $priceValue = $pricingData['price'];
-                    
-                    if (is_null($basePrice) || $priceValue < $basePrice) {
-                        $basePrice = $priceValue;
-                    }
-
-                    $space->registration->prices()->create([
-                        'pricing_type_id' => $typeId,
-                        'price' => $priceValue,
-                    ]);
-                }
-            }
-
-            if (!is_null($basePrice)) {
-                $space->update(['price' => $basePrice]);
-            }
-
-            // 5. Gallery Management: Deletions
-            if ($request->filled('deleted_photos')) {
-                $deletedIds = explode(',', $request->deleted_photos);
-                $photosToDelete = SpacePhoto::whereIn('id', $deletedIds)
-                    ->where('space_registration_id', $space->registration_id)
-                    ->get();
-                    
-                foreach($photosToDelete as $photo) {
-                    Storage::disk('public')->delete($photo->file_path);
-                    $photo->delete();
-                }
-            }
-
-            // 6. Gallery Management: Uploads
-            if ($request->hasFile('new_photos')) {
-                foreach ($request->file('new_photos') as $photoFile) {
-                    $photoPath = $photoFile->store("spaces/gallery/reg_{$space->registration_id}", 'public');
-                    SpacePhoto::create([
-                        'space_registration_id' => $space->registration_id,
-                        'space_id' => $space->id,
-                        'file_path' => $photoPath,
-                        'is_primary' => false, 
-                    ]);
-                }
-            }
-
-            // 7. Gallery Management: Primary Cover Setup
-            if ($request->filled('primary_photo_id') && $request->primary_photo_id !== 'null') {
-                SpacePhoto::where('space_registration_id', $space->registration_id)->update(['is_primary' => false]);
-                SpacePhoto::where('id', $request->primary_photo_id)
-                    ->where('space_registration_id', $space->registration_id)
-                    ->update(['is_primary' => true]);
-            } else {
-                // Failsafe: if no primary is selected, pick the first available photo
-                $firstPhoto = SpacePhoto::where('space_registration_id', $space->registration_id)->first();
-                if ($firstPhoto) {
-                    $firstPhoto->update(['is_primary' => true]);
-                }
-            }
+            $this->updateLocation($space, $request);
+            $this->updateSpaceData($space, $request);
+            $this->syncPricing($space, $request->pricing);
+            $this->manageGallery($space, $request);
 
             DB::commit();
-
-            return redirect()->route('owner.spaces.show', $space->id)->with('success', 'Space details updated successfully!');
-
+            return redirect()->route('owner.spaces.show', $space->id)->with('success', 'Space updated!');
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->withInput()->with('error', 'Update Failed: ' . $e->getMessage());
         }
     }
 
-   public function updateStatus(Request $request, Space $space)
-    {
-        // 1. Security Check
-        if ($space->owner_id !== \Illuminate\Support\Facades\Auth::id()) {
-            abort(403);
-        }
+    public function updateStatus(Request $request, Space $space) {
+        $this->authorizeOwner($space);
+        $request->validate(['action' => 'required|in:pause,unpause,unlist']);
 
-        $request->validate([
-            'action' => 'required|in:pause,unpause,unlist'
-        ]);
+        $codes = ['pause' => 'spc_paused', 'unpause' => 'spc_available', 'unlist' => 'spc_unlisted'];
+        $space->update(['status_id' => Status::where('code', $codes[$request->action])->value('id')]);
 
-        // 2. Handle Pause
-        if ($request->action === 'pause') {
-            $space->update(['status_id' => \App\Models\Status::where('code', 'spc_paused')->value('id')]);
-            return back()->with('success', 'Space paused. It is temporarily hidden from the public marketplace.');
-        }
+        return back()->with('success', 'Status updated successfully.');
+    }
 
-        // 3. Handle Unpause
-        if ($request->action === 'unpause') {
-            $space->update(['status_id' => \App\Models\Status::where('code', 'spc_available')->value('id')]);
-            return back()->with('success', 'Space reactivated! It is now live on the marketplace.');
-        }
+    // Helpers 
+    private function authorizeOwner(Space $space) {
+        if ($space->owner_id !== Auth::id()) abort(403);
+    }
 
-        // 4. Handle Unlist (Archiving)
-        if ($request->action === 'unlist') {
-            
-            // TODO: do rent flow to so we can check unlist logic, cannot be done during an on going rent.
-            /*
-            $hasActiveRents = \App\Models\Rent::where('space_id', $space->id)
-                ->whereHas('status', function ($query) {
-                    // Prevent unlisting if there are pending requests or ongoing rentals
-                    $query->whereIn('code', ['rnt_req_pending', 'rnt_ongoing']);
-                })->exists();
+    private function updateLocation(Space $space, Request $request) {
+        $space->location->update($request->only(['city', 'province', 'address', 'latitude', 'longitude']));
+    }
 
-            if ($hasActiveRents) {
-                return back()->with('error', 'Action denied: You cannot unlist a space that has pending requests or ongoing active rentals. Please resolve them first.');
+    private function updateSpaceData(Space $space, Request $request) {
+        $area = $request->dimension_type === 'exact' ? ($request->length * $request->width) : $request->area;
+        $data = [
+            'name' => $request->name, 'description' => $request->description,
+            'length' => $request->length, 'width' => $request->width, 'area' => $area,
+        ];
+        $space->update($data);
+        $space->registration->update($data);
+    }
+
+    private function syncPricing(Space $space, array $pricing) {
+        $space->registration->prices()->delete();
+        $basePrice = null;
+
+        foreach ($pricing as $typeId => $data) {
+            if (isset($data['is_active']) && !empty($data['price'])) {
+                $space->registration->prices()->create(['pricing_type_id' => $typeId, 'price' => $data['price']]);
+                if (is_null($basePrice) || $data['price'] < $basePrice) $basePrice = $data['price'];
             }
-            */
-
-            $space->update(['status_id' => \App\Models\Status::where('code', 'spc_unlisted')->value('id')]);
-            
-            // Redirect back to dashboard since the space is now gone from active management
-            return redirect()->route('owner.spaces.index')->with('success', 'Space permanently unlisted and archived.');
         }
+        if ($basePrice) $space->update(['price' => $basePrice]);
+    }
+
+    private function manageGallery(Space $space, Request $request) {
+        if ($request->filled('deleted_photos')) {
+            $ids = explode(',', $request->deleted_photos);
+            SpacePhoto::whereIn('id', $ids)->where('space_id', $space->id)->each(function($p) {
+                Storage::disk('public')->delete($p->file_path);
+                $p->delete();
+            });
+        }
+        if ($request->hasFile('new_photos')) {
+            foreach ($request->file('new_photos') as $file) {
+                SpacePhoto::create([
+                    'space_registration_id' => $space->registration_id,
+                    'space_id' => $space->id,
+                    'file_path' => $file->store("spaces/gallery/reg_{$space->registration_id}", 'public')
+                ]);
+            }
+        }
+        $primaryId = $request->primary_photo_id;
+        SpacePhoto::where('space_id', $space->id)->update(['is_primary' => DB::raw("id = {$primaryId}")]);
     }
 }

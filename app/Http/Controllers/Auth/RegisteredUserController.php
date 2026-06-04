@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Auth\RegisterUserRequest; // Import your new request
+use App\Http\Requests\Auth\RegisterUserRequest;
 use App\Models\DocumentType;
 use App\Models\Status;
 use App\Models\User;
@@ -15,52 +15,50 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\View\View;
 
-class RegisteredUserController extends Controller
+class RegisteredUserController extends Controller 
 {
-    public function create(): View
+    public function create(): View 
     {
         return view('auth.register');
     }
 
-    // Inject the new RegisterUserRequest here!
-    public function store(RegisterUserRequest $request): RedirectResponse
+    public function store(RegisterUserRequest $request): RedirectResponse 
     {
         $ktpTypeId = DocumentType::where('code', 'ktp')->value('id');
         $selfieTypeId = DocumentType::where('code', 'selfie_ktp')->value('id');
+        $pendingId = Status::where('code', 'usr_verify_pending')->value('id');
 
-        if (!$ktpTypeId || !$selfieTypeId) {
-            return back()->withInput()->with('error', 'Configuration Error: Required document types are missing from the database.');
+        if (!$ktpTypeId || !$selfieTypeId || !$pendingId) {
+            return back()->withInput()->with('error', 'System configuration error: Missing document types or statuses.');
         }
-
-        // The phone is already ltrim-ed thanks to prepareForValidation() in the FormRequest!
-        $fullPhoneNumber = $request->phone_code . $request->phone;
 
         DB::beginTransaction();
         try {
-            // The email is already lowercased thanks to prepareForValidation()
             $user = User::create([
                 'name' => $request->name,
-                'username' => $request->username,
-                'email' => $request->email, 
-                'phone' => $fullPhoneNumber,
+                'username'=> $request->username,
+                'email'=> $request->email,
+                'phone'=> $request->phone_code . $request->phone,
                 'password' => Hash::make($request->password),
-                'ver_status' => Status::where('code', 'usr_verify_pending')->value('id'), 
+                'ver_status' => $pendingId,
             ]);
 
             $user->assignRole('renter');
 
-            $ktpPath = $request->file('ktp')->store("staging/verifications/{$user->id}", 'public');
-            $selfiePath = $request->file('selfie_ktp')->store("staging/verifications/{$user->id}", 'public');
+            // Store files
+            $dir = "staging/verifications/{$user->id}";
+            $ktpPath = $request->file('ktp')->store($dir, 'public');
+            $selfiePath = $request->file('selfie_ktp')->store($dir, 'public');
 
+            // Create Log & Link Documents
             $log = VerificationLog::create([
-                'user_id' => $user->id,
-                'status_id' => Status::where('code', 'usr_verify_pending')->value('id'),
+                'user_id'=> $user->id,
+                'status_id' => $pendingId,
             ]);
 
-            // Note: Updated 'desc' to 'description' based on your VerificationDocument model
             $log->documents()->createMany([
-                ['document_type_id' => $ktpTypeId, 'file_path' => $ktpPath, 'description' => 'Initial KTP Submission on Registration'],
-                ['document_type_id' => $selfieTypeId, 'file_path' => $selfiePath, 'description' => 'Initial Selfie Verification on Registration'],
+                ['document_type_id' => $ktpTypeId, 'file_path' => $ktpPath, 'description' => 'KTP Submission'],
+                ['document_type_id' => $selfieTypeId, 'file_path' => $selfiePath, 'description' => 'Selfie Verification'],
             ]);
 
             DB::commit();
@@ -68,7 +66,7 @@ class RegisteredUserController extends Controller
             event(new Registered($user));
             Auth::login($user);
 
-            return redirect()->route('verification.notice'); // Assuming you have this route defined
+            return redirect()->route('verification.notice');
 
         } catch (\Exception $e) {
             DB::rollBack();

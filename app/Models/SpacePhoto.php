@@ -17,13 +17,11 @@ class SpacePhoto extends Model
         'is_primary'
     ];
 
-    public function spaceRegistration()
-    {
+    public function spaceRegistration(){
         return $this->belongsTo(SpaceRegistration::class);
     }
 
-    public function space()
-    {
+    public function space(){
         return $this->belongsTo(Space::class);
     }
 }

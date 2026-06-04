@@ -15,13 +15,11 @@ class SpaceRegistrationPrice extends Model
         'price'
     ];
 
-    public function spaceRegistration()
-    {
+    public function spaceRegistration(){
         return $this->belongsTo(SpaceRegistration::class);
     }
 
-    public function pricingType()
-    {
+    public function pricingType(){
         return $this->belongsTo(PricingType::class);
     }
 }

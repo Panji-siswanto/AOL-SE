@@ -19,13 +19,11 @@ class Location extends Model
         'longitude',
     ];
 
-    public function spaces()
-    {
+    public function spaces(){
         return $this->hasMany(Space::class);
     }
 
-    public function spaceRegistrations()
-    {
+    public function spaceRegistrations(){
         return $this->hasMany(SpaceRegistration::class);
     }
 }

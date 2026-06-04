@@ -16,15 +16,11 @@ class UserDocument extends Model
         'description'
     ];
 
-    // Belongs to a User
-    public function user()
-    {
+    public function user(){
         return $this->belongsTo(User::class);
     }
 
-    // Belongs to a specific Document Type dictionary entry
-    public function type()
-    {
+    public function type(){
         return $this->belongsTo(DocumentType::class, 'document_type_id');
     }
 }

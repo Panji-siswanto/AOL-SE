@@ -30,8 +30,7 @@ class Space extends Model
         'status_id',
     ];
 
-    public function getFormattedSizeAttribute()
-    {
+    public function getFormattedSizeAttribute(){
         if ($this->length && $this->width) {
             $l = $this->length + 0;
             $w = $this->width + 0;
@@ -41,63 +40,7 @@ class Space extends Model
         return "{$a} m²";
     }
 
-    // belongs to owner
-    public function owner()
-    {
-        return $this->belongsTo(User::class, 'owner_id');
-    }
-
-    // belongs to location
-    public function location()
-    {
-        return $this->belongsTo(Location::class);
-    }
-
-    // belongs to registration
-    public function registration()
-    {
-        return $this->belongsTo(SpaceRegistration::class, 'registration_id');
-    }
-
-    // belongs to status
-    public function status()
-    {
-        return $this->belongsTo(Status::class);
-    }
-
-    // many-to-many facilities
-    public function facilities()
-    {
-        return $this->belongsToMany(Facility::class, 'space_facilities')
-            ->withPivot('detail')
-            ->withTimestamps();
-    }
-
-    // bookmarks
-    public function bookmarks()
-    {
-        return $this->hasMany(Bookmark::class);
-    }
-
-    // rent requests
-    public function rentRequests()
-    {
-        return $this->hasMany(RentRequest::class);
-    }
-
-    // rents
-    public function rents()
-    {
-        return $this->hasMany(Rent::class);
-    }
-
-    public function photos()
-    {
-        return $this->hasMany(SpacePhoto::class);
-    }
-
-    public function getCoverPhotoUrlAttribute()
-    {
+    public function getCoverPhotoUrlAttribute(){
         $photo = $this->photos->where('is_primary', true)->first() 
               ?? $this->photos->first()
               ?? $this->registration->photos->where('is_primary', true)->first() 
@@ -109,4 +52,44 @@ class Space extends Model
 
         return 'https://ui-avatars.com/api/?name='.urlencode($this->name).'&background=E5E7EB&color=9CA3AF&size=512';
     }
+
+    public function owner(){
+        return $this->belongsTo(User::class, 'owner_id');
+    }
+
+    public function location(){
+        return $this->belongsTo(Location::class);
+    }
+
+    public function registration(){
+        return $this->belongsTo(SpaceRegistration::class, 'registration_id');
+    }
+
+    public function status(){
+        return $this->belongsTo(Status::class);
+    }
+
+    public function facilities(){
+        return $this->belongsToMany(Facility::class, 'space_facilities')
+            ->withPivot('detail')
+            ->withTimestamps();
+    }
+
+    public function bookmarks(){
+        return $this->hasMany(Bookmark::class);
+    }
+
+    public function rentRequests(){
+        return $this->hasMany(RentRequest::class);
+    }
+
+    public function rents(){
+        return $this->hasMany(Rent::class);
+    }
+
+    public function photos(){
+        return $this->hasMany(SpacePhoto::class);
+    }
+
+  
 }

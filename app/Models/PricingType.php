@@ -9,10 +9,12 @@ class PricingType extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['code', 'name'];
+    protected $fillable = [
+        'code',
+        'name',
+    ];
 
-    public function spaceRegistrationPrices()
-    {
+    public function spaceRegistrationPrices(){
         return $this->hasMany(SpaceRegistrationPrice::class);
     }
 }

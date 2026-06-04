@@ -2,9 +2,6 @@
 namespace App\Traits;
 trait Filterable
 {
-    /**
-     * Scope a query to filterby syatus
-     */
     public function scopeWithStatus($query, $statusCode)
     {
         if ($statusCode) {

@@ -17,13 +17,11 @@ class RegistrationLog extends Model
         'note',
     ];
 
-    public function registration()
-    {
+    public function registration(){
         return $this->belongsTo(SpaceRegistration::class, 'registration_id');
     }
 
-    public function admin()
-    {
+    public function admin(){
         return $this->belongsTo(User::class, 'admin_id');
     }
 }

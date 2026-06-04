@@ -14,8 +14,7 @@ class Facility extends Model
         'name',
     ];
 
-    public function spaces()
-    {
+    public function spaces(){
         return $this->belongsToMany(Space::class, 'space_facilities')
             ->withPivot('detail')
             ->withTimestamps();

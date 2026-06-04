@@ -22,23 +22,19 @@ class Rent extends Model
         'status_id',
     ];
 
-    public function request()
-    {
+    public function request(){
         return $this->belongsTo(RentRequest::class, 'request_id');
     }
 
-    public function space()
-    {
+    public function space(){
         return $this->belongsTo(Space::class);
     }
 
-    public function renter()
-    {
+    public function renter(){
         return $this->belongsTo(User::class, 'renter_id');
     }
 
-    public function status()
-    {
+    public function status(){
         return $this->belongsTo(Status::class);
     }
 }

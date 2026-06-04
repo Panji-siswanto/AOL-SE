@@ -16,13 +16,11 @@ class Bookmark extends Model
         'space_id',
     ];
 
-    public function user()
-    {
+    public function user(){
         return $this->belongsTo(User::class);
     }
 
-    public function space()
-    {
+    public function space(){
         return $this->belongsTo(Space::class);
     }
 }

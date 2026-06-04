@@ -22,18 +22,15 @@ class RentMessage extends Model
         'note',
     ];
 
-    public function request()
-    {
+    public function request(){
         return $this->belongsTo(RentRequest::class, 'request_id');
     }
 
-    public function sender()
-    {
+    public function sender(){
         return $this->belongsTo(User::class, 'sender_id');
     }
 
-    public function type()
-    {
+    public function type(){
         return $this->belongsTo(Status::class, 'type_id');
     }
 }

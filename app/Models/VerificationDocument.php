@@ -10,9 +10,7 @@ class VerificationDocument extends Model
 {
     use HasFactory;
 
-    // Explicitly define table name if Laravel tries to pluralize unexpectedly
-    protected $table = 'verification_documents';
-
+    // protected $table = 'verification_documents';
     protected $fillable = [
         'logs_id',
         'document_type_id',
@@ -20,19 +18,12 @@ class VerificationDocument extends Model
         'description',
     ];
 
-    /**
-     * Parent staging log mapping.
-     */
-    public function log(): BelongsTo
-    {
+    
+    public function log(): BelongsTo{
         return $this->belongsTo(VerificationLog::class, 'logs_id');
     }
 
-    /**
-     * Document classification metadata mapping.
-     */
-    public function documentType(): BelongsTo
-    {
+    public function documentType(): BelongsTo{
         return $this->belongsTo(DocumentType::class, 'document_type_id');
     }
 }
