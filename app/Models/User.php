@@ -104,17 +104,15 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->ver_status === \App\Models\Status::USR_VERIFY_PENDING;
     }
 
-    // app/Models/User.php
+    
 
-public function getActionBtnAttribute(): ?object
+
+    public function getActionBtnAttribute(): ?object
     {
         $status = $this->ver_status;
         $isOwner = $this->hasRole('owner');
-        
-        // Check if the user has submitted at least one space registration
         $hasRegistrations = \App\Models\SpaceRegistration::where('owner_id', $this->id)->exists();
 
-        // 1. Needs Identity Verification
         if ($status == \App\Models\Status::USR_UNVERIFIED || $status == \App\Models\Status::USR_REJECTED) {
             return (object) [
                 'label' => 'Verify Now!',
@@ -122,30 +120,31 @@ public function getActionBtnAttribute(): ?object
                 'url' => route('verification.index') 
             ];
         }
-
-        // 2. Verified AND (Is an Owner OR has a pending application) -> Show Management Dashboard
         if ($isOwner || $hasRegistrations) {
             return (object) [
                 'label' => 'My Listings',
                 'color' => 'bg-gray-900 hover:bg-gray-800 shadow-gray-900/30',
-                // CHANGED: Now points to the new Owner dashboard route
                 'url' => route('owner.spaces.index') 
             ];
         }
-
-        // 3. Verified, NOT an owner, and NO applications -> First Time Listing
         if ($status == \App\Models\Status::USR_VERIFIED && !$hasRegistrations) {
             return (object) [
                 'label' => 'List Your Space',
                 'color' => 'bg-[#009485] hover:bg-teal-700 shadow-teal-500/30',
-                // CHANGED: Now points to the new Owner registration route
                 'url' => route('owner.spaces.registrations.create') 
             ];
         }
-
-        // Returns null for USR_VERIFY_PENDING
         return null;
     }
+
+    public function bookmarkedSpaces()
+    {
+        return $this->belongsToMany(Space::class, 'bookmarks')->withTimestamps();
+    }
+
+
+
+
     /**
      * Get the attributes that should be cast.
      *

@@ -10,8 +10,8 @@
             </a>
         </div>
 
-        {{-- Header Section --}}
-        <div class="mb-6 flex justify-between items-start">
+        {{-- Header Section with Bookmark Button --}}
+        <div class="mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
             <div>
                 <h1 class="text-4xl font-black text-gray-900 tracking-tight mb-2">{{ $space->name }}</h1>
                 <div class="flex flex-wrap items-center gap-4 text-sm font-medium text-gray-600">
@@ -20,6 +20,49 @@
                     <span class="flex items-center gap-1.5"><span class="text-teal-600">📏</span> {{ $space->length && $space->width ? $space->length.'x'.$space->width.'m' : $space->area.'m²' }}</span>
                 </div>
             </div>
+            
+            {{-- Interactive Save / Bookmark Button --}}
+            <button @click.prevent="toggleBookmark"
+                    x-data="{
+                        bookmarked: {{ $isBookmarked ? 'true' : 'false' }},
+                        loading: false,
+                        toggleBookmark() {
+                            @if(!auth()->check())
+                                window.dispatchEvent(new CustomEvent('open-login-modal'));
+                                return;
+                            @endif
+                            
+                            if(this.loading) return;
+                            this.loading = true;
+                            
+                            fetch('{{ route('spaces.bookmark', $space->id) }}', {
+                                method: 'POST',
+                                headers: {
+                                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                    'Accept': 'application/json'
+                                }
+                            })
+                            .then(res => res.json())
+                            .then(data => {
+                                this.bookmarked = data.bookmarked;
+                                this.loading = false;
+                            }).catch(() => this.loading = false);
+                        }
+                    }"
+                    :class="bookmarked ? 'text-teal-600 bg-teal-50 border-teal-200' : 'text-gray-500 bg-white border-gray-200 hover:bg-gray-50'"
+                    class="flex items-center gap-2 px-4 py-2.5 rounded-xl border font-bold text-sm shadow-sm transition active:scale-95 w-fit">
+                
+                {{-- Outline Bookmark Icon (Not Saved) --}}
+                <svg x-show="!bookmarked" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M17.5 22.096c0 .514-.61.776-1.01.442L12 18.75l-4.49 3.788c-.4.334-1.01.072-1.01-.442V4.5A1.5 1.5 0 0 1 8 3h8a1.5 1.5 0 0 1 1.5 1.5v17.596Z" />
+                </svg>
+                
+                {{-- Solid Bookmark Icon (Saved) --}}
+                <svg x-show="bookmarked" style="display: none;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
+                    <path fill-rule="evenodd" d="M6.5 3A1.5 1.5 0 0 0 5 4.5v17.596c0 .514.61.776 1.01.442L12 18.75l4.49 3.788c.4.334 1.01.072 1.01-.442V4.5A1.5 1.5 0 0 0 16 3H6.5Z" clip-rule="evenodd" />
+                </svg>
+                <span x-text="bookmarked ? 'Saved' : 'Save'"></span>
+            </button>
         </div>
 
         {{-- Photo Gallery Slider --}}

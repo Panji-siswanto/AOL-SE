@@ -33,8 +33,6 @@
     <div class="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
         
         {{-- FILTER & SORT PANEL --}}
-     {{-- FILTER & SORT PANEL --}}
-        {{-- Keep panel open if any filters are active in the URL --}}
         <div x-data="{ showFilters: {{ request()->anyFilled(['min_price', 'max_price', 'min_area', 'max_area']) ? 'true' : 'false' }} }" class="mb-8 relative z-20">
             <form action="{{ route('dashboard') }}" method="GET">
                 {{-- Preserve search keyword when filtering --}}
@@ -72,7 +70,7 @@
                     </div>
                 </div>
 
-                {{-- Collapsible Filter UI (Matches your screenshot exactly) --}}
+                {{-- Collapsible Filter UI --}}
                 <div x-show="showFilters" x-collapse x-cloak class="mt-4 bg-white p-6 md:p-8 rounded-[2rem] border border-gray-100 shadow-lg">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
                         
@@ -116,13 +114,13 @@
                     
                     {{-- Action Buttons --}}
                     <div class="mt-8 pt-6 border-t border-gray-50 flex items-center justify-end gap-6">
-                        {{-- Keep the search string when resetting filters --}}
                         <a href="{{ route('dashboard', request('search') ? ['search' => request('search')] : []) }}" class="text-sm font-bold text-gray-500 hover:text-gray-900 transition">Reset Filter</a>
                         <button type="submit" class="bg-[#009485] hover:bg-teal-700 text-white px-8 py-3 rounded-xl text-sm font-bold shadow-md shadow-teal-500/20 transition active:scale-95">Terapkan Filter</button>
                     </div>
                 </div>
             </form>
         </div>
+
         {{-- Grid Section --}}
         @if($spaces->isEmpty())
             <div class="text-center py-20 bg-white rounded-[2rem] border border-gray-100 shadow-sm">
@@ -136,9 +134,46 @@
                 @foreach($spaces as $space)
                     <div class="bg-white rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-xl transition-all overflow-hidden group flex flex-col relative">
                         
-                        {{-- Bookmark Heart Button --}}
-                        <button class="absolute top-4 right-4 z-10 bg-white/80 backdrop-blur p-2 rounded-full text-gray-400 hover:text-red-500 hover:bg-white shadow-sm transition">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+                        {{-- Interactive Bookmark Button --}}
+                        <button @click.prevent="toggleBookmark"
+                                x-data="{
+                                    bookmarked: {{ in_array($space->id, $bookmarkedSpaceIds) ? 'true' : 'false' }},
+                                    loading: false,
+                                    toggleBookmark() {
+                                        @if(!auth()->check())
+                                            window.dispatchEvent(new CustomEvent('open-login-modal'));
+                                            return;
+                                        @endif
+                                        
+                                        if(this.loading) return;
+                                        this.loading = true;
+                                        
+                                        fetch('{{ route('spaces.bookmark', $space->id) }}', {
+                                            method: 'POST',
+                                            headers: {
+                                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                                'Accept': 'application/json'
+                                            }
+                                        })
+                                        .then(res => res.json())
+                                        .then(data => {
+                                            this.bookmarked = data.bookmarked;
+                                            this.loading = false;
+                                        }).catch(() => this.loading = false);
+                                    }
+                                }"
+                                :class="bookmarked ? 'text-teal-600 bg-teal-50 border border-teal-100' : 'text-gray-400 bg-white/80 hover:text-teal-600 hover:bg-white'"
+                                class="absolute top-4 right-4 z-10 backdrop-blur p-2.5 rounded-full shadow-sm transition duration-300">
+                            
+                            {{-- Outline Icon (Not Bookmarked) --}}
+                            <svg x-show="!bookmarked" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
+                            </svg>
+                            
+                            {{-- Solid Icon (Bookmarked) --}}
+                            <svg x-show="bookmarked" style="display: none;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
+                                <path fill-rule="evenodd" d="M6.32 2.577a49.255 49.255 0 0111.36 0c1.497.174 2.57 1.46 2.57 2.93V21l-8.25-5.25L3.75 21V5.507c0-1.47 1.073-2.756 2.57-2.93z" clip-rule="evenodd" />
+                            </svg>
                         </button>
 
                         <a href="{{ route('spaces.show', $space->id) }}" class="flex-grow flex flex-col">

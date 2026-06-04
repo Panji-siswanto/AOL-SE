@@ -8,11 +8,18 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ListingRequestController;
 use App\Http\Controllers\Admin\UserVerificationRequestController;
 use App\Http\Controllers\Owner\SpaceController;
+use App\Http\Controllers\Public\BookmarkController;
 use App\Http\Controllers\Public\SpaceDiscoveryController;
 
 
 Route::get('/', [SpaceDiscoveryController::class, 'index'])->name('dashboard');
 Route::get('/spaces/{space}', [SpaceDiscoveryController::class, 'show'])->name('spaces.show');
+
+ Route::middleware('auth')->group(function () {
+    // View saved spaces list
+    Route::get('/bookmarks', [BookmarkController::class, 'index'])->name('bookmarks.index');    
+    Route::post('/spaces/{space}/bookmark', [BookmarkController::class, 'toggle'])->name('spaces.bookmark');
+});   
 
 Route::middleware(['auth', 'verified'])->group(function () {
     

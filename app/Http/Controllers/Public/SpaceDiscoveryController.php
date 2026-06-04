@@ -9,20 +9,19 @@ use Illuminate\Support\Facades\Auth;
 
 class SpaceDiscoveryController extends Controller
 {
-   public function index(Request $request)
+    public function index(Request $request)
     {
-        // 1. Traffic Cop: Redirect Admins
         if (Auth::check() && Auth::user()->hasRole('admin')) {
             return redirect()->route('admin.dashboard');
         }
 
-        // 2. Base Query
+        // Base Query
         $query = Space::with(['location', 'photos', 'registration.photos', 'registration.prices'])
             ->whereHas('status', function ($q) {
                 $q->where('code', 'spc_available');
             });
 
-        // 3. Apply Search Filter (Name, City, Address)
+        // Apply Search Filter (Name, City, Address)
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
@@ -34,7 +33,7 @@ class SpaceDiscoveryController extends Controller
             });
         }
 
-        // 4. Apply Price Filters
+        // Apply Price Filters
         if ($request->filled('min_price')) {
             $query->where('price', '>=', $request->min_price);
         }
@@ -42,7 +41,7 @@ class SpaceDiscoveryController extends Controller
             $query->where('price', '<=', $request->max_price);
         }
 
-        // 5. Apply Area Filters
+        // Apply Area Filters
         if ($request->filled('min_area')) {
             $query->where('area', '>=', $request->min_area);
         }
@@ -50,8 +49,7 @@ class SpaceDiscoveryController extends Controller
             $query->where('area', '<=', $request->max_area);
         }
 
-        // 6. Apply Sorting
-        // 6. Apply Sorting
+        // Apply Sorting
         $sort = $request->input('sort', 'latest');
         switch ($sort) {
             case 'price_asc':
@@ -63,7 +61,7 @@ class SpaceDiscoveryController extends Controller
             case 'area_desc':
                 $query->orderBy('area', 'desc');
                 break;
-            case 'area_asc': // <-- NEW: Size from smaller
+            case 'area_asc': 
                 $query->orderBy('area', 'asc');
                 break;
             case 'latest':
@@ -72,20 +70,25 @@ class SpaceDiscoveryController extends Controller
                 break;
         }
 
-        // 7. Fetch Paginated Results
+        // Fetch Paginated Results
         $spaces = $query->paginate(6)->withQueryString();
+        
+        $bookmarkedSpaceIds = [];
+        if (Auth::check()) {
+            $bookmarkedSpaceIds = Auth::user()->bookmarkedSpaces()->pluck('space_id')->toArray();
+        }
 
-        return view('public.spaces.dashboard', compact('spaces'));
+        return view('public.dashboard', compact('spaces', 'bookmarkedSpaceIds'));
     }
-    // NEW SHOW METHOD FOR PUBLIC VIEWING
+
     public function show(Space $space)
     {
-        // 1. Prevent viewing if the space is paused or unlisted
+        // Prevent viewing if the space is paused or unlisted
         if ($space->status->code !== 'spc_available') {
             abort(404, 'This space is currently unavailable.');
         }
 
-        // 2. Load the necessary relationships
+        // Load relationships
         $space->load([
             'location', 
             'registration.prices.pricingType', 
@@ -94,7 +97,9 @@ class SpaceDiscoveryController extends Controller
             'owner'
         ]);
 
-        // 3. Return the public-facing view
-        return view('public.spaces.show', compact('space'));
+        // Return the public-facing view
+        $isBookmarked = Auth::check() && Auth::user()->bookmarkedSpaces()->where('space_id', $space->id)->exists();
+
+        return view('public.spaces.show', compact('space', 'isBookmarked'));    
     }
 }
