@@ -37,7 +37,7 @@
             </div>
             
             <h3 class="text-2xl font-black text-gray-900 text-center mb-2">Login Required</h3>
-            <p class="text-gray-500 text-center text-sm font-medium mb-8">You need an account to save favorite spaces and request rentals.</p>
+            <p class="text-gray-500 text-center text-sm font-medium mb-8">You need an account to save favorite spaces and request rents.</p>
             
             <div class="space-y-3">
                 <a href="{{ route('login') }}" class="block w-full bg-teal-600 hover:bg-teal-700 text-white text-center py-3.5 rounded-xl font-bold shadow-md transition">Login to Lapak.in</a>

@@ -3,14 +3,25 @@
 
     <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8" x-data="{ globalPreview: null }">
         
-        {{-- Breadcrumb / Back Button --}}
-        <div class="mb-6">
+        {{-- Breadcrumb & Alerts --}}
+        <div class="mb-6 flex justify-between items-center">
             <a href="{{ route('dashboard') }}" class="text-sm font-bold text-gray-500 hover:text-teal-600 transition flex items-center gap-2">
                 &larr; Back to Discovery
             </a>
         </div>
 
-        {{-- Header Section with Bookmark Button --}}
+        {{-- Flash Messages --}}
+        @if(session('error'))
+            <div class="mb-6 bg-red-50 text-red-700 p-4 rounded-xl border border-red-100 font-bold text-sm">
+                {{ session('error') }}
+            </div>
+        @endif
+        @if(session('success'))
+            <div class="mb-6 bg-teal-50 text-teal-700 p-4 rounded-xl border border-teal-100 font-bold text-sm">
+                {{ session('success') }}
+            </div>
+        @endif
+
         <div class="mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
             <div>
                 <h1 class="text-4xl font-black text-gray-900 tracking-tight mb-2">{{ $space->name }}</h1>
@@ -21,7 +32,6 @@
                 </div>
             </div>
             
-            {{-- Interactive Save / Bookmark Button --}}
             <button @click.prevent="toggleBookmark"
                     x-data="{
                         bookmarked: {{ $isBookmarked ? 'true' : 'false' }},
@@ -52,12 +62,10 @@
                     :class="bookmarked ? 'text-teal-600 bg-teal-50 border-teal-200' : 'text-gray-500 bg-white border-gray-200 hover:bg-gray-50'"
                     class="flex items-center gap-2 px-4 py-2.5 rounded-xl border font-bold text-sm shadow-sm transition active:scale-95 w-fit">
                 
-                {{-- Outline Bookmark Icon (Not Saved) --}}
                 <svg x-show="!bookmarked" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M17.5 22.096c0 .514-.61.776-1.01.442L12 18.75l-4.49 3.788c-.4.334-1.01.072-1.01-.442V4.5A1.5 1.5 0 0 1 8 3h8a1.5 1.5 0 0 1 1.5 1.5v17.596Z" />
                 </svg>
                 
-                {{-- Solid Bookmark Icon (Saved) --}}
                 <svg x-show="bookmarked" style="display: none;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
                     <path fill-rule="evenodd" d="M6.5 3A1.5 1.5 0 0 0 5 4.5v17.596c0 .514.61.776 1.01.442L12 18.75l4.49 3.788c.4.334 1.01.072 1.01-.442V4.5A1.5 1.5 0 0 0 16 3H6.5Z" clip-rule="evenodd" />
                 </svg>
@@ -65,7 +73,6 @@
             </button>
         </div>
 
-        {{-- Photo Gallery Slider --}}
         @php 
             $photos = $space->photos->count() > 0 ? $space->photos : $space->registration->photos; 
             $coverUrl = $photos->count() > 0 ? asset('storage/' . ($photos->where('is_primary', true)->first()->file_path ?? $photos->first()->file_path)) : '';
@@ -74,13 +81,11 @@
         <div class="mb-10 bg-white p-6 md:p-8 rounded-[2rem] border border-gray-100 shadow-sm" x-data="spaceGallery('{{ $coverUrl }}')">
             
             @if($photos->count() > 0)
-                {{-- Main Active Image --}}
                 <div class="w-full h-[350px] md:h-[450px] rounded-3xl overflow-hidden relative mb-4 bg-gray-100 group cursor-pointer" @click="globalPreview = { url: activeImageUrl, type: 'image' }">
                     <img :src="activeImageUrl" class="w-full h-full object-cover transition duration-500 group-hover:scale-105">
                     <div class="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition"></div>
                 </div>
 
-                {{-- Interactive Thumbnails --}}
                 <div class="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
                     @foreach($photos->sortByDesc('is_primary') as $photo)
                         @php $photoUrl = asset('storage/' . $photo->file_path); @endphp
@@ -101,10 +106,8 @@
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-12">
             
-            {{-- Main Content (Left Column) --}}
             <div class="lg:col-span-2 space-y-12">
                 
-                {{-- Host Info --}}
                 <div class="flex items-center gap-4 pb-8 border-b border-gray-100">
                     <div class="w-16 h-16 bg-teal-100 text-teal-700 rounded-full flex items-center justify-center text-2xl font-black shadow-inner">
                         {{ substr($space->owner->name, 0, 1) }}
@@ -117,7 +120,6 @@
                     </div>
                 </div>
 
-                {{-- About This Space --}}
                 <div class="pb-8 border-b border-gray-100">
                     <h3 class="text-xl font-black text-gray-900 mb-4">About this space</h3>
                     <div class="prose prose-gray max-w-none text-gray-600 font-medium leading-relaxed whitespace-pre-line">
@@ -125,14 +127,12 @@
                     </div>
                 </div>
 
-                {{-- Map --}}
                 <div>
                     <h3 class="text-xl font-black text-gray-900 mb-4">Location</h3>
                     <div id="public-map" class="w-full h-[400px] rounded-[2rem] border border-gray-200 shadow-sm z-0"></div>
                 </div>
             </div>
 
-            {{-- Sticky Renter Checkout Widget (Right Column) --}}
             <div class="relative">
                 <div class="sticky top-8 bg-white p-8 rounded-[2rem] border border-gray-200 shadow-xl shadow-gray-100/50">
                     
@@ -143,37 +143,73 @@
                         </div>
                     </div>
 
-                    {{-- Form for future Renting --}}
-                    <form action="#" method="GET" class="space-y-6">
-                        
-                        <div>
-                            <label class="text-[10px] font-black uppercase tracking-wider text-gray-400 block mb-3">Available Rental Packages</label>
-                            <div class="space-y-3">
-                                @foreach($space->registration->prices as $price)
-                                    <label class="flex justify-between items-center p-4 bg-gray-50 hover:bg-teal-50 rounded-xl border border-gray-200 hover:border-teal-300 cursor-pointer transition has-[:checked]:bg-teal-50 has-[:checked]:border-teal-500 has-[:checked]:ring-1 has-[:checked]:ring-teal-500">
-                                        <div class="flex items-center gap-3">
-                                            <input type="radio" name="pricing_id" value="{{ $price->id }}" class="w-4 h-4 text-teal-600 focus:ring-teal-500 border-gray-300" required>
-                                            <span class="text-sm font-bold text-gray-700">{{ $price->pricingType->name }}</span>
-                                        </div>
-                                        <span class="text-sm font-black text-gray-900">Rp {{ number_format($price->price, 0, ',', '.') }}</span>
-                                    </label>
-                                @endforeach
-                            </div>
-                        </div>
-
-                        <div class="pt-4 border-t border-gray-100">
-                            <button type="button" onclick="alert('Checkout process coming soon!')" class="w-full bg-orange-500 hover:bg-orange-600 text-white text-center py-4 rounded-2xl font-black transition-all active:scale-95 shadow-lg shadow-orange-500/30">
-                                Request to Rent
+                    @if(!auth()->check())
+                        <div class="bg-gray-50 border border-gray-100 p-6 rounded-2xl text-center mt-6">
+                            <span class="text-3xl mb-3 block">🔒</span>
+                            <h4 class="font-black text-gray-900 mb-1">Login Required</h4>
+                            <p class="text-sm font-medium text-gray-600 mb-4">Please log in or create an account to request this space.</p>
+                            <button @click.prevent="window.dispatchEvent(new CustomEvent('open-login-modal'))" class="w-full bg-gray-900 hover:bg-black text-white py-3 rounded-xl font-bold transition-all shadow-sm">
+                                Log In to Continue
                             </button>
-                            <p class="text-[10px] text-center text-gray-400 font-bold mt-4 uppercase tracking-wider">You won't be charged yet</p>
                         </div>
-                    </form>
+                    @elseif(!auth()->user()->is_verified)
+                        <div class="bg-orange-50 border border-orange-100 p-6 rounded-2xl text-center mt-6">
+                            <span class="text-3xl mb-3 block">🛡️</span>
+                            <h4 class="font-black text-gray-900 mb-1">Verification Required</h4>
+                            <p class="text-sm font-medium text-gray-600 mb-4">To ensure community safety, you must verify your identity before renting a space.</p>
+                            <a href="{{ route('verification.index') }}" class="w-full block bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-xl font-bold transition-all shadow-sm">
+                                Verify Identity Now
+                            </a>
+                        </div>
+                    @elseif(auth()->id() === $space->owner_id)
+                        <div class="bg-gray-50 border border-gray-200 p-6 rounded-2xl text-center mt-6">
+                            <span class="text-3xl mb-3 block">🏠</span>
+                            <h4 class="font-black text-gray-900 mb-1">Your Listing</h4>
+                            <p class="text-sm font-medium text-gray-600 mb-4">You are the host of this space. You cannot request to rent it.</p>
+                            <a href="{{ route('owner.spaces.show', $space->id) }}" class="w-full block bg-gray-900 hover:bg-black text-white py-3 rounded-xl font-bold transition-all shadow-sm">
+                                Manage Space
+                            </a>
+                        </div>
+                    @elseif($space->has_active_request)
+                        <div class="bg-teal-50 border border-teal-100 p-6 rounded-2xl text-center mt-6">
+                            <span class="text-3xl mb-3 block">⏳</span>
+                            <h4 class="font-black text-gray-900 mb-1">Request Pending</h4>
+                            <p class="text-sm font-medium text-gray-600 mb-4">You already have an active application for this space. Please wait for the host to review it.</p>
+                            <a href="{{ route('rents.index') }}" class="w-full block bg-teal-600 hover:bg-teal-700 text-white py-3 rounded-xl font-bold transition-all shadow-sm">
+                                Track My Request
+                            </a>
+                        </div>
+                    @else
+                        <form action="{{ route('rents.create', $space->id) }}" method="GET" class="space-y-6">
+                            
+                            <div>
+                                <label class="text-[10px] font-black uppercase tracking-wider text-gray-400 block mb-3">Available Rental Packages</label>
+                                <div class="space-y-3">
+                                    @foreach($space->registration->prices as $price)
+                                        <label class="flex justify-between items-center p-4 bg-gray-50 hover:bg-teal-50 rounded-xl border border-gray-200 hover:border-teal-300 cursor-pointer transition has-[:checked]:bg-teal-50 has-[:checked]:border-teal-500 has-[:checked]:ring-1 has-[:checked]:ring-teal-500">
+                                            <div class="flex items-center gap-3">
+                                                <input type="radio" name="pricing_id" value="{{ $price->id }}" class="w-4 h-4 text-teal-600 focus:ring-teal-500 border-gray-300" required>
+                                                <span class="text-sm font-bold text-gray-700">{{ $price->pricingType->name }}</span>
+                                            </div>
+                                            <span class="text-sm font-black text-gray-900">Rp {{ number_format($price->price, 0, ',', '.') }}</span>
+                                        </label>
+                                    @endforeach
+                                </div>
+                            </div>
+
+                            <div class="pt-4 border-t border-gray-100">
+                                <button type="submit" class="w-full bg-orange-500 hover:bg-orange-600 text-white text-center py-4 rounded-2xl font-black transition-all active:scale-95 shadow-lg shadow-orange-500/30">
+                                    Request to Rent
+                                </button>
+                                <p class="text-[10px] text-center text-gray-400 font-bold mt-4 uppercase tracking-wider">You won't be charged yet</p>
+                            </div>
+                        </form>
+                    @endif
 
                 </div>
             </div>
         </div>
 
-        {{-- Global Preview Modal --}}
         <div x-show="globalPreview !== null" x-cloak x-transition.opacity class="fixed inset-0 z-50 bg-black/95 backdrop-blur-sm flex items-center justify-center p-4" @click.self="globalPreview = null" @keydown.escape.window="globalPreview = null">
             <button type="button" @click="globalPreview = null" class="absolute top-6 right-6 text-white text-4xl hover:scale-110 transition z-10">&times;</button>
             <template x-if="globalPreview?.type === 'image'">

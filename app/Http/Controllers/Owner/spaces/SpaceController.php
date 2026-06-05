@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Owner;
+namespace App\Http\Controllers\Owner\spaces;
 
 use App\Http\Controllers\Controller;
 use App\Models\PricingType;
@@ -108,8 +108,11 @@ class SpaceController extends Controller {
     private function updateSpaceData(Space $space, Request $request) {
         $area = $request->dimension_type === 'exact' ? ($request->length * $request->width) : $request->area;
         $data = [
-            'name' => $request->name, 'description' => $request->description,
-            'length' => $request->length, 'width' => $request->width, 'area' => $area,
+            'name' => $request->name, 
+            'description' => $request->description,
+            'length' => $request->dimension_type === 'exact' ? $request->length : null, 
+            'width' => $request->dimension_type === 'exact' ? $request->width : null, 
+            'area' => $area,
         ];
         $space->update($data);
         $space->registration->update($data);
@@ -130,12 +133,15 @@ class SpaceController extends Controller {
 
     private function manageGallery(Space $space, Request $request) {
         if ($request->filled('deleted_photos')) {
-            $ids = explode(',', $request->deleted_photos);
-            SpacePhoto::whereIn('id', $ids)->where('space_id', $space->id)->each(function($p) {
-                Storage::disk('public')->delete($p->file_path);
-                $p->delete();
-            });
+            $ids = array_filter(explode(',', $request->deleted_photos));
+            if (!empty($ids)) {
+                SpacePhoto::whereIn('id', $ids)->where('space_id', $space->id)->each(function($p) {
+                    if ($p->file_path) Storage::disk('public')->delete($p->file_path);
+                    $p->delete();
+                });
+            }
         }
+
         if ($request->hasFile('new_photos')) {
             foreach ($request->file('new_photos') as $file) {
                 SpacePhoto::create([
@@ -145,7 +151,15 @@ class SpaceController extends Controller {
                 ]);
             }
         }
+
         $primaryId = $request->primary_photo_id;
-        SpacePhoto::where('space_id', $space->id)->update(['is_primary' => DB::raw("id = {$primaryId}")]);
+        SpacePhoto::where('space_id', $space->id)->update(['is_primary' => false]);
+        
+        if ($primaryId && $primaryId !== 'null') {
+            SpacePhoto::where('space_id', $space->id)->where('id', $primaryId)->update(['is_primary' => true]);
+        } else {
+            $fallback = SpacePhoto::where('space_id', $space->id)->first();
+            if ($fallback) $fallback->update(['is_primary' => true]);
+        }
     }
 }

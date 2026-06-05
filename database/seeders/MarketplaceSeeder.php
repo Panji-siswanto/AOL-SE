@@ -39,11 +39,11 @@ class MarketplaceSeeder extends Seeder
         $owner1 = User::firstOrCreate(
             ['email' => 'owner1@lapak.in'],
             [
-                'name' => 'Owner 1', 
-                'username' => 'owner1', 
-                'phone' => '+6281234567891', 
-                'password' => $password, 
-                'ver_status' => $verifiedStatus,
+                'name'              => 'Owner 1', 
+                'username'          => 'owner1', 
+                'phone'             => '+6281234567891', 
+                'password'          => $password, 
+                'ver_status'        => $verifiedStatus,
                 'email_verified_at' => now(), 
             ]
         );
@@ -52,11 +52,11 @@ class MarketplaceSeeder extends Seeder
         $owner2 = User::firstOrCreate(
             ['email' => 'owner2@lapak.in'],
             [
-                'name' => 'Owner 2', 
-                'username' => 'owner2', 
-                'phone' => '+6281234567892', 
-                'password' => $password, 
-                'ver_status' => $verifiedStatus,
+                'name'              => 'Owner 2', 
+                'username'          => 'owner2', 
+                'phone'             => '+6281234567892', 
+                'password'          => $password, 
+                'ver_status'        => $verifiedStatus,
                 'email_verified_at' => now(), 
             ]
         );
@@ -65,11 +65,11 @@ class MarketplaceSeeder extends Seeder
         $owner3 = User::firstOrCreate(
             ['email' => 'owner3@lapak.in'],
             [
-                'name' => 'Owner 3 Ruko', 
-                'username' => 'owner3', 
-                'phone' => '+6281234567893', 
-                'password' => $password, 
-                'ver_status' => $verifiedStatus,
+                'name'              => 'Owner 3 Ruko', 
+                'username'          => 'owner3', 
+                'phone'             => '+6281234567893', 
+                'password'          => $password, 
+                'ver_status'        => $verifiedStatus,
                 'email_verified_at' => now(), 
             ]
         );
@@ -90,17 +90,13 @@ class MarketplaceSeeder extends Seeder
 
         if ($reg1->wasRecentlyCreated) {
             $reg1->prices()->create(['pricing_type_id' => $monthlyPricing, 'price' => 1500000]);
-            
             $reg1->documents()->createMany([
                 ['document_type_id' => $suratTanahTypeId, 'file_path' => 'dummy/sertifikat_1.pdf', 'description' => 'Sertifikat Hak Milik'],
             ]);
 
-            $reg1->photos()->create(['file_path' => 'dummy/space_1.jpg', 'description' => 'Tampak Depan', 'is_primary' => true]);
-
-            $space = Space::create([
+            Space::create([
                 'owner_id' => $owner1->id, 'location_id' => $loc1->id, 'registration_id' => $reg1->id, 'name' => $reg1->name, 'description' => $reg1->description, 'length' => 2.0, 'width' => 2.0, 'area' => 4.0, 'price' => 1500000, 'status_id' => $spcAvailable,
             ]);
-            $reg1->photos()->update(['space_id' => $space->id]);
         }
 
         // ---------------------------------------------------------
@@ -119,7 +115,6 @@ class MarketplaceSeeder extends Seeder
         if ($reg2->wasRecentlyCreated) {
             $reg2->prices()->create(['pricing_type_id' => $dailyPricing, 'price' => 50000]);
             $reg2->documents()->createMany([['document_type_id' => $suratTanahTypeId, 'file_path' => 'dummy/sertifikat_2.pdf', 'description' => 'Sertifikat']]);
-            $reg2->photos()->create(['file_path' => 'dummy/space_2.jpg', 'description' => 'Malam Hari', 'is_primary' => true]);
         }
 
         // ---------------------------------------------------------
@@ -138,12 +133,10 @@ class MarketplaceSeeder extends Seeder
         if ($reg3Live->wasRecentlyCreated) {
             $reg3Live->prices()->create(['pricing_type_id' => $monthlyPricing, 'price' => 3000000]);
             $reg3Live->documents()->createMany([['document_type_id' => $suratTanahTypeId, 'file_path' => 'dummy/sertifikat_3a.pdf', 'description' => 'Sertifikat Kios']]);
-            $reg3Live->photos()->create(['file_path' => 'dummy/space_3a.jpg', 'description' => 'Tampak Kios', 'is_primary' => true]);
 
-            $space = Space::create([
+            Space::create([
                 'owner_id' => $owner3->id, 'location_id' => $loc3->id, 'registration_id' => $reg3Live->id, 'name' => $reg3Live->name, 'description' => $reg3Live->description, 'length' => 3.0, 'width' => 4.0, 'area' => 12.0, 'price' => 3000000, 'status_id' => $spcAvailable,
             ]);
-            $reg3Live->photos()->update(['space_id' => $space->id]);
         }
 
         $reg3Pending = SpaceRegistration::firstOrCreate(
@@ -154,23 +147,28 @@ class MarketplaceSeeder extends Seeder
         if ($reg3Pending->wasRecentlyCreated) {
             $reg3Pending->prices()->create(['pricing_type_id' => $monthlyPricing, 'price' => 800000]);
             $reg3Pending->documents()->createMany([['document_type_id' => $perjanjianSewaTypeId, 'file_path' => 'dummy/izin_3b.pdf', 'description' => 'Izin Gelar Lapak']]);
-            $reg3Pending->photos()->create(['file_path' => 'dummy/space_3b.jpg', 'description' => 'Area Emperan', 'is_primary' => true]);
         }
 
         // ---------------------------------------------------------
         // SCENARIO 4: MASS GENERATION (New Live Spaces for Discovery Feed)
         // ---------------------------------------------------------
         $newLiveSpaces = [
-            // Owner 1 Additions
-            ['owner' => $owner1, 'name' => 'Lapak Kuliner Binus Syahdan', 'address' => 'Jl. K.H. Syahdan No. 9', 'city' => 'Jakarta Barat', 'province' => 'DKI Jakarta', 'lat' => -6.2001, 'lng' => 106.7854, 'area' => 6.0, 'price' => 1200000, 'pricing' => $monthlyPricing, 'photo' => 'dummy/space_4.jpg'],
-            ['owner' => $owner1, 'name' => 'Booth Pameran Mal Taman Anggrek', 'address' => 'Letjen S. Parman St No.28', 'city' => 'Jakarta Barat', 'province' => 'DKI Jakarta', 'lat' => -6.1785, 'lng' => 106.7922, 'area' => 9.0, 'price' => 500000, 'pricing' => $dailyPricing, 'photo' => 'dummy/space_5.jpg'],
-            // Owner 2 Additions
-            ['owner' => $owner2, 'name' => 'Area Foodtruck Alam Sutera', 'address' => 'Kawasan CBD Alam Sutera', 'city' => 'Tangerang', 'province' => 'Banten', 'lat' => -6.2250, 'lng' => 106.6500, 'area' => 18.0, 'price' => 3500000, 'pricing' => $monthlyPricing, 'photo' => 'dummy/space_6.jpg'],
-            ['owner' => $owner2, 'name' => 'Kios Tenda Pasar Lama', 'address' => 'Kawasan Kuliner Pasar Lama', 'city' => 'Tangerang', 'province' => 'Banten', 'lat' => -6.1702, 'lng' => 106.6333, 'area' => 4.0, 'price' => 75000, 'pricing' => $dailyPricing, 'photo' => 'dummy/space_7.jpg'],
-            // Owner 3 Additions
-            ['owner' => $owner3, 'name' => 'Ruko Sentra Gading Serpong', 'address' => 'Jl. Boulevard Gading Serpong', 'city' => 'Tangerang', 'province' => 'Banten', 'lat' => -6.2400, 'lng' => 106.6288, 'area' => 24.0, 'price' => 6000000, 'pricing' => $monthlyPricing, 'photo' => 'dummy/space_8.jpg'],
-            ['owner' => $owner3, 'name' => 'Emperan Ruko Karawaci', 'address' => 'Supermal Karawaci Area', 'city' => 'Tangerang', 'province' => 'Banten', 'lat' => -6.2260, 'lng' => 106.6074, 'area' => 2.5, 'price' => 850000, 'pricing' => $monthlyPricing, 'photo' => 'dummy/space_9.jpg'],
-            ['owner' => $owner3, 'name' => 'Lapak Stasiun Rawa Buntu', 'address' => 'Area Parkir Stasiun Rawa Buntu', 'city' => 'Tangerang Selatan', 'province' => 'Banten', 'lat' => -6.3194, 'lng' => 106.6836, 'area' => 3.0, 'price' => 100000, 'pricing' => $dailyPricing, 'photo' => 'dummy/space_10.jpg'],
+            // Original
+            ['owner' => $owner1, 'name' => 'Lapak Kuliner Binus Syahdan', 'address' => 'Jl. K.H. Syahdan No. 9', 'city' => 'Jakarta Barat', 'province' => 'DKI Jakarta', 'lat' => -6.2001, 'lng' => 106.7854, 'area' => 6.0, 'price' => 1200000, 'pricing' => $monthlyPricing],
+            ['owner' => $owner1, 'name' => 'Booth Pameran Mal Taman Anggrek', 'address' => 'Letjen S. Parman St No.28', 'city' => 'Jakarta Barat', 'province' => 'DKI Jakarta', 'lat' => -6.1785, 'lng' => 106.7922, 'area' => 9.0, 'price' => 500000, 'pricing' => $dailyPricing],
+            ['owner' => $owner2, 'name' => 'Area Foodtruck Alam Sutera', 'address' => 'Kawasan CBD Alam Sutera', 'city' => 'Tangerang', 'province' => 'Banten', 'lat' => -6.2250, 'lng' => 106.6500, 'area' => 18.0, 'price' => 3500000, 'pricing' => $monthlyPricing],
+            ['owner' => $owner2, 'name' => 'Kios Tenda Pasar Lama', 'address' => 'Kawasan Kuliner Pasar Lama', 'city' => 'Tangerang', 'province' => 'Banten', 'lat' => -6.1702, 'lng' => 106.6333, 'area' => 4.0, 'price' => 75000, 'pricing' => $dailyPricing],
+            ['owner' => $owner3, 'name' => 'Ruko Sentra Gading Serpong', 'address' => 'Jl. Boulevard Gading Serpong', 'city' => 'Tangerang', 'province' => 'Banten', 'lat' => -6.2400, 'lng' => 106.6288, 'area' => 24.0, 'price' => 6000000, 'pricing' => $monthlyPricing],
+            ['owner' => $owner3, 'name' => 'Emperan Ruko Karawaci', 'address' => 'Supermal Karawaci Area', 'city' => 'Tangerang', 'province' => 'Banten', 'lat' => -6.2260, 'lng' => 106.6074, 'area' => 2.5, 'price' => 850000, 'pricing' => $monthlyPricing],
+            ['owner' => $owner3, 'name' => 'Lapak Stasiun Rawa Buntu', 'address' => 'Area Parkir Stasiun Rawa Buntu', 'city' => 'Tangerang Selatan', 'province' => 'Banten', 'lat' => -6.3194, 'lng' => 106.6836, 'area' => 3.0, 'price' => 100000, 'pricing' => $dailyPricing],
+            
+            // New Additions for Quantity
+            ['owner' => $owner1, 'name' => 'Bazar Dadakan Senayan', 'address' => 'Area Parkir Timur Senayan', 'city' => 'Jakarta Pusat', 'province' => 'DKI Jakarta', 'lat' => -6.2146, 'lng' => 106.8015, 'area' => 4.0, 'price' => 250000, 'pricing' => $dailyPricing],
+            ['owner' => $owner2, 'name' => 'Lapak CFD Bundaran HI', 'address' => 'Jl. M.H. Thamrin', 'city' => 'Jakarta Pusat', 'province' => 'DKI Jakarta', 'lat' => -6.1948, 'lng' => 106.8231, 'area' => 2.0, 'price' => 150000, 'pricing' => $dailyPricing],
+            ['owner' => $owner3, 'name' => 'Kios Blok M Square', 'address' => 'Jl. Melawai 5', 'city' => 'Jakarta Selatan', 'province' => 'DKI Jakarta', 'lat' => -6.2444, 'lng' => 106.8006, 'area' => 6.0, 'price' => 2000000, 'pricing' => $monthlyPricing],
+            ['owner' => $owner1, 'name' => 'Foodcourt PIK 2', 'address' => 'Pantai Indah Kapuk 2', 'city' => 'Jakarta Utara', 'province' => 'DKI Jakarta', 'lat' => -6.0846, 'lng' => 106.7380, 'area' => 12.0, 'price' => 5000000, 'pricing' => $monthlyPricing],
+            ['owner' => $owner2, 'name' => 'Lahan Kosong Margonda', 'address' => 'Jl. Margonda Raya', 'city' => 'Depok', 'province' => 'Jawa Barat', 'lat' => -6.3732, 'lng' => 106.8340, 'area' => 20.0, 'price' => 4500000, 'pricing' => $monthlyPricing],
+            ['owner' => $owner3, 'name' => 'Stand Pameran ICE BSD', 'address' => 'Jl. BSD Grand Boulevard', 'city' => 'Tangerang', 'province' => 'Banten', 'lat' => -6.2986, 'lng' => 106.6358, 'area' => 9.0, 'price' => 1500000, 'pricing' => $dailyPricing],
         ];
 
         foreach ($newLiveSpaces as $data) {
@@ -187,22 +185,19 @@ class MarketplaceSeeder extends Seeder
             if ($reg->wasRecentlyCreated) {
                 $reg->prices()->create(['pricing_type_id' => $data['pricing'], 'price' => $data['price']]);
                 $reg->documents()->create(['document_type_id' => $perjanjianSewaTypeId, 'file_path' => 'dummy/izin_mass.pdf', 'description' => 'Izin Auto-Generated']);
-                $reg->photos()->create(['file_path' => $data['photo'], 'description' => 'Cover Photo', 'is_primary' => true]);
 
-                $space = Space::create([
-                    'owner_id' => $data['owner']->id,
-                    'location_id' => $loc->id,
+                Space::create([
+                    'owner_id'        => $data['owner']->id,
+                    'location_id'     => $loc->id,
                     'registration_id' => $reg->id,
-                    'name' => $reg->name,
-                    'description' => $reg->description,
-                    'length' => null,
-                    'width' => null,
-                    'area' => $data['area'],
-                    'price' => $data['price'],
-                    'status_id' => $spcAvailable,
+                    'name'            => $reg->name,
+                    'description'     => $reg->description,
+                    'length'          => null,
+                    'width'           => null,
+                    'area'            => $data['area'],
+                    'price'           => $data['price'],
+                    'status_id'       => $spcAvailable,
                 ]);
-
-                $reg->photos()->update(['space_id' => $space->id]);
             }
         }
     }

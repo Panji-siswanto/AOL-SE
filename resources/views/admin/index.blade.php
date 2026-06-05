@@ -1,6 +1,6 @@
 <x-admin-layout>
     <div class="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-        <h1 class="text-3xl font-black text-gray-900 mb-2">Welcome, {{ $Admin->name }}</h1>
+        <h1 class="text-3xl font-black text-gray-900 mb-2">Welcome, {{ $admin->name }}</h1>
         <p class="text-gray-500 text-sm mb-8">System overview and core moderation controls for Lapak.in marketplace operations.</p>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">

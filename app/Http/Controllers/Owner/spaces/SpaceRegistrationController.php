@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Owner;
+namespace App\Http\Controllers\Owner\spaces;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreSpaceRegistrationRequest;

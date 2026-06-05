@@ -12,6 +12,7 @@ use App\Traits\Filterable;
 use App\Traits\Searchable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 
 class Space extends Model
 {
@@ -51,6 +52,15 @@ class Space extends Model
         }
 
         return 'https://ui-avatars.com/api/?name='.urlencode($this->name).'&background=E5E7EB&color=9CA3AF&size=512';
+    }
+
+    public function getHasActiveRequestAttribute(): bool{
+        if (!Auth::check()) return false;
+        
+        return $this->rentRequests()
+            ->where('renter_id', Auth::id())
+            ->whereIn('status_id', [Status::RNT_REQ_PENDING, Status::RNT_REQ_ACCEPTED])
+            ->exists();
     }
 
     public function owner(){

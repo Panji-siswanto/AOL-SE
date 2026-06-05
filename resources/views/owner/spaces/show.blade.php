@@ -190,7 +190,7 @@
                         @else
                             <div class="mt-4 p-4 bg-orange-50 border border-orange-100 rounded-2xl text-center shadow-sm">
                                 <p class="text-[10px] font-black text-orange-600 uppercase tracking-wider flex items-center justify-center gap-1"><span>⚠️</span> Cannot Unlist</p>
-                                <p class="text-xs text-orange-800 font-medium mt-1">This property has active or pending rentals. You must resolve them before unlisting.</p>
+                                <p class="text-xs text-orange-800 font-medium mt-1">This property has active or pending rents. You must resolve them before unlisting.</p>
                             </div>
                         @endif
                     </div>

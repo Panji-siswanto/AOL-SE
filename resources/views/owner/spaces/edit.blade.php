@@ -71,7 +71,7 @@
                         @php
                             $existingPrice = $space->registration->prices->where('pricing_type_id', $type->id)->first();
                             $isActive = $existingPrice ? 'true' : 'false';
-                            $priceValue = $existingPrice ? $existingPrice->price : '';
+                            $priceValue = $existingPrice ? (int) $existingPrice->price : ''; // Casted to int to drop decimals!
                             $formattedInitial = $priceValue ? number_format($priceValue, 0, ',', '.') : '';
                         @endphp
                         
@@ -95,7 +95,7 @@
                 </div>
             </div>
 
-            {{-- 3. Photo Gallery Manager (Cumulative Uploads + Preview) --}}
+            {{-- 3. Photo Gallery Manager --}}
             @php
                 $photos = $space->photos->count() > 0 ? $space->photos : $space->registration->photos;
                 $coverId = $photos->where('is_primary', true)->first()->id ?? ($photos->first()->id ?? null);
@@ -110,25 +110,20 @@
                     </span>
                     <button type="button" @click="$refs.triggerInput.click()" class="text-xs bg-teal-50 text-teal-600 px-4 py-2 rounded-xl font-bold hover:bg-teal-100 transition shadow-sm">+ Add New Photos</button>
                     
-                    {{-- Hidden trigger for UI click --}}
                     <input type="file" multiple accept="image/*" class="hidden" x-ref="triggerInput" @change="handleNewFiles">
-                    {{-- The actual input that holds the cumulative files for form submission --}}
                     <input type="file" name="new_photos[]" id="final-photos-input" multiple class="hidden" x-ref="finalInput">
                 </h3>
 
                 <input type="hidden" name="deleted_photos" :value="deletedIds.join(',')">
                 <input type="hidden" name="primary_photo_id" :value="primaryId">
 
-                {{-- Large Active Preview --}}
                 <div class="w-full h-[350px] md:h-[450px] rounded-3xl overflow-hidden relative mb-4 bg-gray-100 flex items-center justify-center">
                     <img x-show="activePreviewUrl" :src="activePreviewUrl" class="w-full h-full object-cover">
                     <span x-show="!activePreviewUrl" class="text-gray-400 font-bold text-lg">No images available</span>
                 </div>
 
-                {{-- Draggable Thumbnails Grid --}}
                 <div class="flex gap-4 overflow-x-auto pb-4 scrollbar-hide" x-ref="sortableList">
                     
-                    {{-- Existing Database Photos (Draggable) --}}
                     <template x-for="photo in activePhotos" :key="photo.id">
                         <div :data-id="photo.id" 
                              class="thumbnail-item relative w-20 h-20 md:w-24 md:h-24 flex-shrink-0 rounded-2xl overflow-hidden cursor-pointer transition-all border-2"
@@ -148,7 +143,6 @@
                         </div>
                     </template>
 
-                    {{-- Newly Added Files (Previewable & Removable) --}}
                     <template x-for="(file, index) in newPreviews" :key="'new-'+index">
                         <div class="relative w-20 h-20 md:w-24 md:h-24 flex-shrink-0 rounded-2xl overflow-hidden cursor-pointer border-2 border-dashed transition-all"
                              :class="activePreviewUrl === file.url ? 'border-teal-500 opacity-100' : 'border-teal-300 opacity-80 hover:opacity-100'"
@@ -218,7 +212,6 @@
                 primaryId: initialCoverId,
                 activePreviewUrl: null,
                 
-                // Cumulative File Arrays
                 newFiles: [],
                 newPreviews: [],
 
@@ -251,19 +244,14 @@
                     this.primaryId = id;
                 },
 
-deletePhoto(id) {
-                    // 1. Find the exact URL of the photo being deleted
+                deletePhoto(id) {
                     const photoToDelete = this.photos.find(p => p.id === id);
-                    
-                    // 2. Mark as deleted
                     this.deletedIds.push(id);
                     
-                    // 3. Reassign cover photo if needed
                     if (this.primaryId == id) {
                         this.primaryId = this.activePhotos.length > 0 ? this.activePhotos[0].id : null;
                     }
                     
-                    // 4. Update the big preview if we were currently looking at the deleted photo
                     if (photoToDelete && this.activePreviewUrl === photoToDelete.url) { 
                         if (this.activePhotos.length > 0) {
                             this.activePreviewUrl = this.activePhotos[0].url;
@@ -284,7 +272,6 @@ deletePhoto(id) {
                         this.newPreviews.push({ url: URL.createObjectURL(file), name: file.name });
                     });
 
-                    // Set preview to the first newly added image if nothing is selected
                     if (!this.activePreviewUrl && this.newPreviews.length > 0) {
                         this.activePreviewUrl = this.newPreviews[0].url;
                     }
@@ -294,14 +281,11 @@ deletePhoto(id) {
                 },
 
                 removeNewFile(index) {
-                    // 1. Store the URL before removing
                     const urlBeingDeleted = this.newPreviews[index].url;
 
-                    // 2. Remove the file
                     this.newFiles.splice(index, 1);
                     this.newPreviews.splice(index, 1);
                     
-                    // 3. Update the big preview if we were looking at it
                     if (this.activePreviewUrl === urlBeingDeleted) {
                         if (this.activePhotos.length > 0) {
                             this.activePreviewUrl = this.activePhotos[0].url;
@@ -314,6 +298,7 @@ deletePhoto(id) {
                     
                     this.syncNewFilesToInput();
                 },
+                
                 syncNewFilesToInput() {
                     const dataTransfer = new DataTransfer();
                     this.newFiles.forEach(file => dataTransfer.items.add(file));

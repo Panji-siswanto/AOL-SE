@@ -3,24 +3,31 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\VerificationController;
-use App\Http\Controllers\Owner\SpaceRegistrationController;
-use App\Http\Controllers\Owner\SpaceController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ListingRequestController;
 use App\Http\Controllers\Admin\UserVerificationRequestController;
+use App\Http\Controllers\Owner\spaces\SpaceController;
+use App\Http\Controllers\Owner\spaces\SpaceRegistrationController;
 use App\Http\Controllers\Public\BookmarkController;
 use App\Http\Controllers\Public\SpaceDiscoveryController;
+use App\Http\Controllers\Renter\RentRequestController;
 
 // Public
 Route::get('/', [SpaceDiscoveryController::class, 'index'])->name('dashboard');
 Route::get('/spaces/{space}', [SpaceDiscoveryController::class, 'show'])->name('spaces.show');
+
 // Bookmarks
 Route::middleware('auth')->group(function () {
     Route::get('/bookmarks', [BookmarkController::class, 'index'])->name('bookmarks.index');    
     Route::post('/spaces/{space}/bookmark', [BookmarkController::class, 'toggle'])->name('spaces.bookmark');
 });   
 
-
+// Renter
+Route::middleware(['auth', 'verified'])->prefix('rents')->name('rents.')->group(function () {
+    Route::get('/', [RentRequestController::class, 'index'])->name('index');
+    Route::get('/{space}/apply', [RentRequestController::class, 'create'])->name('create');
+    Route::post('/{space}/apply', [RentRequestController::class, 'store'])->name('store');
+});
 
 // Accounts
 Route::middleware(['auth', 'verified'])->group(function () {

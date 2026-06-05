@@ -84,18 +84,10 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->ver_status === Status::USR_VERIFY_PENDING;
     }
 
-    public function getActionBtnAttribute(): ?object{
+   public function getActionBtnAttribute(): object{
         $status = $this->ver_status;
         $isOwner = $this->hasRole('owner');
         $hasRegistrations = SpaceRegistration::where('owner_id', $this->id)->exists();
-
-        if ($status == Status::USR_UNVERIFIED || $status == Status::USR_REJECTED) {
-            return (object) [
-                'label' => 'Verify Now!',
-                'color' => 'bg-orange-500 hover:bg-orange-600 shadow-orange-500/30',
-                'url'   => route('verification.index') 
-            ];
-        }
 
         if ($isOwner || $hasRegistrations) {
             return (object) [
@@ -104,16 +96,26 @@ class User extends Authenticatable implements MustVerifyEmail
                 'url'   => route('owner.spaces.index') 
             ];
         }
-
-        if ($status == Status::USR_VERIFIED && !$hasRegistrations) {
+        if ($status == Status::USR_VERIFIED) {
             return (object) [
                 'label' => 'List Your Space',
                 'color' => 'bg-[#009485] hover:bg-teal-700 shadow-teal-500/30',
                 'url'   => route('owner.spaces.registrations.create') 
             ];
         }
+        if ($status == Status::USR_VERIFY_PENDING) {
+            return (object) [
+                'label' => 'Verifying...',
+                'color' => 'bg-orange-400 bg-orange-500 shadow-orange-400/30',
+                'url'   => route('verification.index') 
+            ];
+        }
 
-        return null;
+        return (object) [
+            'label' => 'Verify Now!',
+            'color' => 'bg-orange-500 hover:bg-orange-600 shadow-orange-500/30',
+            'url'   => route('verification.index') 
+        ];
     }
 
     protected function casts(): array{
