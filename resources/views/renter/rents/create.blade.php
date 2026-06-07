@@ -69,14 +69,28 @@
 
                     <hr class="border-gray-100">
 
-                    <div>
-                        <h3 class="text-xl font-black text-gray-900 mb-1">3. Write your proposal</h3>
+                    {{-- Dynamic Notes Section (Now Optional) --}}
+                    <div x-data="{ showNote: false }">
+                        <div class="flex items-center justify-between mb-1">
+                            <h3 class="text-xl font-black text-gray-900">3. Write your proposal <span class="text-gray-400 text-sm font-bold">(Optional)</span></h3>
+                        </div>
                         <p class="text-sm text-gray-500 mb-4 font-medium">Introduce yourself, explain what you plan to sell/do, and state your intentions clearly.</p>
-                        <div>
-                            <textarea name="note" id="note" rows="5" required
+                        
+                        <div x-show="!showNote" x-transition>
+                            <button type="button" @click="showNote = true" class="text-teal-600 hover:text-teal-700 font-bold text-sm flex items-center gap-2 bg-teal-50 hover:bg-teal-100 px-4 py-2.5 rounded-xl transition">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                                Add a proposal message
+                            </button>
+                        </div>
+
+                        <div x-show="showNote" x-transition x-cloak>
+                            <textarea name="note" id="note" rows="5"
                                       placeholder="Hi {{ $space->owner->name }}, I am interested in renting this space for my coffee shop business..."
                                       class="w-full rounded-xl border-gray-300 focus:border-teal-500 focus:ring-teal-500 shadow-sm font-medium text-gray-700 resize-none"></textarea>
                             @error('note') <span class="text-red-500 text-xs font-bold mt-1">{{ $message }}</span> @enderror
+                            <div class="flex justify-end mt-2">
+                                <button type="button" @click="showNote = false; document.getElementById('note').value = ''" class="text-xs font-bold text-gray-400 hover:text-gray-600 transition">Cancel message</button>
+                            </div>
                         </div>
                     </div>
 

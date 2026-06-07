@@ -13,13 +13,10 @@ class RentMessage extends Model
     use HasFactory;
 
     protected $fillable = [
-        'request_id',
-        'sender_id',
-        'type_id',
-        'proposed_start_date',
-        'proposed_end_date',
-        'proposed_visit_date',
-        'note',
+        'request_id', 
+        'sender_id', 
+        'type_id', 
+        'message'
     ];
 
     public function request(){
@@ -32,5 +29,10 @@ class RentMessage extends Model
 
     public function type(){
         return $this->belongsTo(Status::class, 'type_id');
+    }
+
+    public function reschedule()
+    {
+        return $this->hasOne(RentReschedule::class, 'rent_message_id');
     }
 }

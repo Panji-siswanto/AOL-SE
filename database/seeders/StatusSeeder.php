@@ -32,11 +32,16 @@ class StatusSeeder extends Seeder
             ['context' => 'rent_status', 'code' => 'rnt_completed', 'name' => 'Completed'],
             ['context' => 'rent_status', 'code' => 'rnt_cancelled', 'name' => 'Cancelled'],
 
-            // 15-16: Messages/Negotiations
+            // 15-25: Messages / Negotiations
             ['context' => 'rent_message', 'code' => 'msg_proposal', 'name' => 'Proposal'],
             ['context' => 'rent_message', 'code' => 'msg_response', 'name' => 'Response'],
+            ['context' => 'rent_message', 'code' => 'msg_application', 'name' => 'Application'],
+            ['context' => 'rent_message', 'code' => 'msg_decline_reason', 'name' => 'Decline Reason'],
+            ['context' => 'rent_message', 'code' => 'msg_reschedule_proposal', 'name' => 'Reschedule Proposal'],
+            ['context' => 'rent_message', 'code' => 'msg_reschedule_accepted', 'name' => 'Reschedule Accepted'],
+            ['context' => 'rent_message', 'code' => 'msg_reschedule_rejected', 'name' => 'Reschedule Rejected'],
 
-            // 17-20: User Identity Verification
+            // 26-29: User Identity Verification
             ['context' => 'user_verification', 'code' => 'usr_unverified', 'name' => 'Unverified'],
             ['context' => 'user_verification', 'code' => 'usr_verify_pending', 'name' => 'Pending Review'],
             ['context' => 'user_verification', 'code' => 'usr_verified', 'name' => 'Verified'],
@@ -44,7 +49,10 @@ class StatusSeeder extends Seeder
         ];
 
         foreach ($statuses as $status) {
-            Status::firstOrCreate(['code' => $status['code']], $status);
+            Status::firstOrCreate(
+                ['code' => $status['code']],
+                $status
+            );
         }
     }
 }

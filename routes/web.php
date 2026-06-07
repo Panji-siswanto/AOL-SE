@@ -28,6 +28,8 @@ Route::middleware(['auth', 'verified'])->prefix('rents')->name('rents.')->group(
     Route::get('/', [RentRequestController::class, 'index'])->name('index');
     Route::get('/{space}/apply', [RentRequestController::class, 'create'])->name('create');
     Route::post('/{space}/apply', [RentRequestController::class, 'store'])->name('store');
+    
+    // Reschedule flow actions
     Route::post('/{rentRequest}/reschedule/accept', [RentRequestController::class, 'acceptReschedule'])->name('reschedule.accept');
     Route::post('/{rentRequest}/reschedule/reject', [RentRequestController::class, 'rejectReschedule'])->name('reschedule.reject');
 });

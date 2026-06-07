@@ -5,7 +5,6 @@ namespace App\Models;
 use App\Models\Rent;
 use App\Models\RentMessage;
 use App\Models\Space;
-use App\Models\SpaceRegistrationPrice;
 use App\Models\Status;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -16,14 +15,14 @@ class RentRequest extends Model
     use HasFactory;
 
     protected $fillable = [
-        'renter_id',
+         'renter_id', 
         'space_id',
         'pricing_id',
         'start_date',
-        'end_date',
-        'visit_date',
-        'total_price',
-        'status_id',
+        'end_date', 
+        'visit_date', 
+        'total_price', 
+        'status_id'
     ];
 
     public function renter(){
@@ -43,7 +42,7 @@ class RentRequest extends Model
     }
 
     public function messages(){
-        return $this->hasMany(RentMessage::class, 'request_id');
+        return $this->hasMany(RentMessage::class, 'request_id')->latest();
     }
 
     public function pricing()
@@ -51,7 +50,7 @@ class RentRequest extends Model
         return $this->belongsTo(SpaceRegistrationPrice::class, 'pricing_id');
     }
 
-    public function getDurationAttribute(): ?int
+     public function getDurationAttribute(): ?int
     {
         if (!$this->pricing || !$this->pricing->price) {
             return null;

@@ -41,9 +41,14 @@ class Status extends Model
     public const RNT_COMPLETED = 13;
     public const RNT_CANCELLED = 14;
 
-    // Message Statuses
-    public const MSG_PROPOSAL = 15;
-    public const MSG_RESPONSE = 16;
+    // Message Statuses 
+    public const MSG_PROPOSAL            = 15;
+    public const MSG_RESPONSE            = 16;
+    public const MSG_APPLICATION         = 21; // initial 
+    public const MSG_DECLINE_REASON      = 22; // Owner's rejection reason
+    public const MSG_RESCHEDULE_PROPOSAL = 23; // propose new date
+    public const MSG_RESCHEDULE_ACCEPTED = 24; // Renter says yes
+    public const MSG_RESCHEDULE_REJECTED = 25; // Renter says no
 
     // User Identity Verification Statuses
     public const USR_UNVERIFIED = 17;

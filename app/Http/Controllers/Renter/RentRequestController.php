@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Renter;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreRentRequest;
 use App\Models\RentMessage;
 use App\Models\RentRequest;
 use App\Models\Space;
+use App\Models\SpaceRegistrationPrice;
 use App\Models\Status;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -14,7 +16,8 @@ use Carbon\Carbon;
 
 class RentRequestController extends Controller
 {
-    public function index(){
+    public function index()
+    {
         $requests = Auth::user()->rentRequests()
             ->with(['space.location', 'status', 'messages.sender'])
             ->latest()
@@ -25,59 +28,59 @@ class RentRequestController extends Controller
 
     public function acceptReschedule(Request $request, RentRequest $rentRequest)
     {
-        if ($rentRequest->renter_id !== Auth::id()) {
-            abort(403, 'Unauthorized access to this reservation request.');
-        }
+        if ($rentRequest->renter_id !== Auth::id()) abort(403, 'Unauthorized access.');
 
-        $proposal = $rentRequest->messages
+        // Fetch based on Status::MSG_RESCHEDULE_PROPOSAL
+        $proposalMsg = $rentRequest->messages()
             ->where('sender_id', '!=', Auth::id())
-            ->whereNotNull('proposed_visit_date')
-            ->sortByDesc('created_at')
+            ->where('type_id', Status::MSG_RESCHEDULE_PROPOSAL)
+            ->whereHas('reschedule')
+            ->latest()
             ->first();
 
-        if (!$proposal) {
-            return redirect()->back()->with('error', 'No reschedule proposal found to accept.');
-        }
+        if (!$proposalMsg) return redirect()->back()->with('error', 'No reschedule proposal found to accept.');
 
-        $rentRequest->update(['visit_date' => $proposal->proposed_visit_date]);
+        DB::transaction(function () use ($rentRequest, $proposalMsg) {
+            $rentRequest->update([
+                'visit_date' => $proposalMsg->reschedule->proposed_visit_date
+            ]);
 
-        RentMessage::create([
-            'request_id' => $rentRequest->id,
-            'sender_id' => Auth::id(),
-            'type_id' => Status::MSG_RESPONSE,
-            'note' => 'Renter accepted the proposed visit date: ' . $proposal->proposed_visit_date,
-        ]);
+            RentMessage::create([
+                'request_id' => $rentRequest->id,
+                'sender_id'  => Auth::id(),
+                'context'    => Status::MSG_RESCHEDULE_ACCEPTED,
+                'message'    => 'I accept the proposed visit date: ' . Carbon::parse($proposalMsg->reschedule->proposed_visit_date)->format('M d, Y'),
+            ]);
+        });
 
         return redirect()->back()->with('success', 'You have accepted the proposed visit date.');
     }
 
     public function rejectReschedule(Request $request, RentRequest $rentRequest)
     {
-        if ($rentRequest->renter_id !== Auth::id()) {
-            abort(403, 'Unauthorized access to this reservation request.');
-        }
+        if ($rentRequest->renter_id !== Auth::id()) abort(403, 'Unauthorized access.');
 
-        $proposal = $rentRequest->messages
+        $proposalMsg = $rentRequest->messages()
             ->where('sender_id', '!=', Auth::id())
-            ->whereNotNull('proposed_visit_date')
-            ->sortByDesc('created_at')
+            ->where('type_id', Status::MSG_RESCHEDULE_PROPOSAL)
+            ->whereHas('reschedule')
+            ->latest()
             ->first();
 
-        if (!$proposal) {
-            return redirect()->back()->with('error', 'No reschedule proposal found to reject.');
-        }
+        if (!$proposalMsg) return redirect()->back()->with('error', 'No reschedule proposal found to reject.');
 
         RentMessage::create([
             'request_id' => $rentRequest->id,
-            'sender_id' => Auth::id(),
-            'type_id' => Status::MSG_RESPONSE,
-            'note' => 'Renter rejected the proposed visit date: ' . $proposal->proposed_visit_date,
+            'sender_id'  => Auth::id(),
+            'context'    => Status::MSG_RESCHEDULE_REJECTED,
+            'message'    => 'I cannot make it on the proposed visit date. Let\'s coordinate another time.',
         ]);
 
         return redirect()->back()->with('success', 'You have rejected the proposed visit date.');
     }
 
-    public function create(Request $request, Space $space){
+    public function create(Request $request, Space $space)
+    {
         if (!Auth::user()->is_verified) {
             return redirect()->route('verification.index')->with('error', 'You must verify your identity before renting a space.');
         }
@@ -94,53 +97,35 @@ class RentRequestController extends Controller
             return redirect()->route('rents.index')->with('error', 'You already have an active or pending request for this space.');
         }
 
-        // Fetch the exact pricing package they selected
         $selectedPricing = $space->registration->prices()->with('pricingType')->find($request->pricing_id);
         
-        if (!$selectedPricing) {
-            return redirect()->route('spaces.show', $space->id)->with('error', 'Please select a valid rental package first.');
-        }
+        if (!$selectedPricing) return redirect()->route('spaces.show', $space->id)->with('error', 'Please select a valid rental package first.');
 
         return view('renter.rents.create', compact('space', 'selectedPricing'));
     }
 
-    public function store(Request $request, Space $space){
-        if (!Auth::user()->is_verified) {
-            return redirect()->route('verification.index')->with('error', 'You must verify your identity before renting a space.');
-        }
-
-        $request->validate([
-            'pricing_id' => ['required', 'exists:space_registration_prices,id'],
-            'start_date' => ['required', 'date', 'after_or_equal:today'],
-            'duration'   => ['required', 'integer', 'min:1'],
-            'visit_date' => ['required', 'date', 'after_or_equal:today', 'before_or_equal:start_date'],
-            'note'       => ['required', 'string', 'max:1000'],
-        ]);
-
-        if ($space->has_active_request) {
-            return redirect()->route('rents.index')->with('error', 'You already have an active application here.');
-        }
-
+   public function store(StoreRentRequest $request, Space $space)
+    {
         try {
             DB::beginTransaction();
 
-            $pricing = $space->registration->prices()->with('pricingType')->findOrFail($request->pricing_id);
-            $typeCode = $pricing->pricingType->code;
+            $duration = (int) $request->duration;
 
-            $start = \Carbon\Carbon::parse($request->start_date);
-            $end = clone $start;
+            $pricing = SpaceRegistrationPrice::with('pricingType')->findOrFail($request->pricing_id);
             
-            $duration = (int) $request->duration; 
+            $totalPrice = $pricing->price * $duration; 
+            
+            $start = Carbon::parse($request->start_date);
+            $end = clone $start;
+            $type = strtolower($pricing->pricingType->code);
 
-            if ($typeCode === 'daily') {
+            if ($type === 'daily') {
                 $end->addDays($duration);
-            } elseif ($typeCode === 'weekly') {
+            } elseif ($type === 'weekly') {
                 $end->addWeeks($duration);
-            } elseif ($typeCode === 'monthly') {
+            } elseif ($type === 'monthly') {
                 $end->addMonths($duration);
             }
-
-            $totalPrice = $pricing->price * $duration;
 
             $rentRequest = RentRequest::create([
                 'renter_id'   => Auth::id(),
@@ -153,16 +138,17 @@ class RentRequestController extends Controller
                 'status_id'   => Status::RNT_REQ_PENDING,
             ]);
 
-            RentMessage::create([
-                'request_id' => $rentRequest->id,
-                'sender_id'  => Auth::id(),
-                'type_id'    => Status::MSG_PROPOSAL,
-                'note'       => $request->note,
-            ]);
+            if ($request->filled('note')) {
+                RentMessage::create([
+                    'request_id' => $rentRequest->id,
+                    'sender_id'  => Auth::id(),
+                    'context'    => Status::MSG_APPLICATION,
+                    'message'    => $request->note,
+                ]);
+            }
 
             DB::commit();
-            return redirect()->route('rents.index')->with('success', 'Rent request submitted successfully!');
-
+            return redirect()->route('rents.index')->with('success', 'Your rental request has been successfully sent to the owner!');
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->with('error', 'Failed to submit request: ' . $e->getMessage())->withInput();

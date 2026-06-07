@@ -17,7 +17,6 @@ class MarketplaceSeeder extends Seeder
 {
     public function run(): void
     {
-        // 1. Status & Type Lookups
         $regPending = Status::where('code', 'reg_pending')->value('id');
         $regApproved = Status::where('code', 'reg_approved')->value('id');
         $spcAvailable = Status::where('code', 'spc_available')->value('id');
@@ -29,11 +28,9 @@ class MarketplaceSeeder extends Seeder
         $suratTanahTypeId = DocumentType::where('code', 'surat_tanah')->value('id');
         $perjanjianSewaTypeId = DocumentType::where('code', 'perjanjian_sewa')->value('id');
 
-        // 2. Ensure Roles Exist
         Role::firstOrCreate(['name' => 'renter']);
         Role::firstOrCreate(['name' => 'owner']);
 
-        // 3. User Creation 
         $password = Hash::make('pass123');
         
         $owner1 = User::firstOrCreate(
@@ -75,9 +72,7 @@ class MarketplaceSeeder extends Seeder
         );
         $owner3->assignRole(['renter', 'owner']);
 
-        // ---------------------------------------------------------
-        // SCENARIO 1: Owner 1 (Live Space - "Booth Tuku Kemanggisan")
-        // ---------------------------------------------------------
+
         $loc1 = Location::firstOrCreate(
             ['address' => 'Jl. Kemanggisan Ilir III No. 45, Palmerah'], 
             ['city' => 'Jakarta Barat', 'province' => 'DKI Jakarta', 'latitude' => -6.1947, 'longitude' => 106.7865]
@@ -99,9 +94,7 @@ class MarketplaceSeeder extends Seeder
             ]);
         }
 
-        // ---------------------------------------------------------
-        // SCENARIO 2: Owner 2 (Pending Registration - "Lapak Tenda")
-        // ---------------------------------------------------------
+
         $loc2 = Location::firstOrCreate(
             ['address' => 'Jl. Boulevard Alam Sutera, Serpong'], 
             ['city' => 'Tangerang Selatan', 'province' => 'Banten', 'latitude' => -6.2238, 'longitude' => 106.6492]
@@ -117,9 +110,7 @@ class MarketplaceSeeder extends Seeder
             $reg2->documents()->createMany([['document_type_id' => $suratTanahTypeId, 'file_path' => 'dummy/sertifikat_2.pdf', 'description' => 'Sertifikat']]);
         }
 
-        // ---------------------------------------------------------
-        // SCENARIO 3: Owner 3 (Live Space AND Pending Registration)
-        // ---------------------------------------------------------
+
         $loc3 = Location::firstOrCreate(
             ['address' => 'Pasar Modern BSD City'], 
             ['city' => 'Tangerang', 'province' => 'Banten', 'latitude' => -6.3056, 'longitude' => 106.6669]
@@ -150,7 +141,7 @@ class MarketplaceSeeder extends Seeder
         }
 
         // ---------------------------------------------------------
-        // SCENARIO 4: MASS GENERATION (New Live Spaces for Discovery Feed)
+        // MASS GENERATION (New Live Spaces for Discovery Feed)
         // ---------------------------------------------------------
         $newLiveSpaces = [
             // Original
