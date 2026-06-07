@@ -60,7 +60,7 @@ class MarketplaceSeeder extends Seeder
                 'email_verified_at' => now(), 
             ]
         );
-        $owner2->assignRole('renter'); 
+        $owner2->assignRole('renter','owner'); 
 
         $owner3 = User::firstOrCreate(
             ['email' => 'owner3@lapak.in'],

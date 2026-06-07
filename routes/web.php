@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\ListingRequestController;
 use App\Http\Controllers\Admin\UserVerificationRequestController;
 use App\Http\Controllers\Owner\spaces\SpaceController;
 use App\Http\Controllers\Owner\spaces\SpaceRegistrationController;
+use App\Http\Controllers\Owner\rents\RentManagementController;
 use App\Http\Controllers\Public\BookmarkController;
 use App\Http\Controllers\Public\SpaceDiscoveryController;
 use App\Http\Controllers\Renter\RentRequestController;
@@ -43,6 +44,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
 Route::middleware(['auth', 'verified'])->prefix('owner')->name('owner.')->group(function () {
     Route::resource('spaces', SpaceController::class);
     Route::patch('spaces/{space}/status', [SpaceController::class, 'updateStatus'])->name('spaces.status.update');
+    
+    // Rent Management
+    Route::get('reservations', [RentManagementController::class, 'index'])->name('reservations.index');
+    Route::get('reservations/{rentRequest}', [RentManagementController::class, 'show'])->name('reservations.show');
+    Route::post('reservations/{rentRequest}/approve', [RentManagementController::class, 'approve'])->name('reservations.approve');
+    Route::post('reservations/{rentRequest}/reject', [RentManagementController::class, 'reject'])->name('reservations.reject');
+    Route::post('reservations/{rentRequest}/reschedule', [RentManagementController::class, 'reschedule'])->name('reservations.reschedule');
     
     Route::prefix('spaces/registrations')->name('spaces.registrations.')->group(function () {
         Route::get('/create', [SpaceRegistrationController::class, 'create'])->name('create');

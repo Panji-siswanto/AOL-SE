@@ -42,4 +42,11 @@ class RentRequest extends Model
     public function messages(){
         return $this->hasMany(RentMessage::class, 'request_id');
     }
+
+
+    public function pricing()
+    {
+
+        return $this->belongsTo(SpaceRegistration::class, 'pricing_id');
+    }
 }
