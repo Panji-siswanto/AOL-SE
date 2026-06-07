@@ -47,6 +47,33 @@
                                 </div>
                             </div>
 
+                            @php
+                                $ownerMessage = $request->messages->where('type_id', \App\Models\Status::MSG_RESPONSE)->sortByDesc('created_at')->first();
+                            @endphp
+
+                            @if($ownerMessage)
+                                <div class="mt-5 bg-teal-50 border border-teal-100 rounded-3xl p-4 text-sm text-gray-700">
+                                    <div class="mb-2 flex items-center justify-between gap-3">
+                                        <span class="font-black uppercase tracking-wide text-teal-700 text-[10px]">Pesan dari pemilik</span>
+                                        <span class="text-[10px] text-gray-500">{{ \Carbon\Carbon::parse($ownerMessage->created_at)->diffForHumans() }}</span>
+                                    </div>
+                                    <p class="whitespace-pre-line">{{ $ownerMessage->note ?? 'Pemilik mengirim informasi baru.' }}</p>
+                                    @if($ownerMessage->proposed_visit_date)
+                                        <p class="mt-3 text-xs font-bold text-teal-700">Tanggal kunjungan diusulkan: {{ \Carbon\Carbon::parse($ownerMessage->proposed_visit_date)->format('M d, Y') }}</p>
+                                        <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            <form method="POST" action="{{ route('rents.reschedule.accept', $request->id) }}" class="w-full">
+                                                @csrf
+                                                <button type="submit" class="w-full bg-teal-600 hover:bg-teal-700 text-white px-4 py-3 rounded-2xl font-black text-sm transition">Terima reschedule</button>
+                                            </form>
+                                            <form method="POST" action="{{ route('rents.reschedule.reject', $request->id) }}" class="w-full">
+                                                @csrf
+                                                <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white px-4 py-3 rounded-2xl font-black text-sm transition">Tolak reschedule</button>
+                                            </form>
+                                        </div>
+                                    @endif
+                                </div>
+                            @endif
+
                             {{-- Dates Grid --}}
                             <div class="grid grid-cols-2 lg:grid-cols-3 gap-4 mt-6 py-4 border-t border-gray-50">
                                 <div>

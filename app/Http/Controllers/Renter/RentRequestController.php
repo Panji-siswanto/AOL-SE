@@ -16,13 +16,66 @@ class RentRequestController extends Controller
 {
     public function index(){
         $requests = Auth::user()->rentRequests()
-            ->with(['space.location', 'status'])
+            ->with(['space.location', 'status', 'messages.sender'])
             ->latest()
             ->paginate(10);
 
         return view('renter.rents.index', compact('requests'));
     }
 
+    public function acceptReschedule(Request $request, RentRequest $rentRequest)
+    {
+        if ($rentRequest->renter_id !== Auth::id()) {
+            abort(403, 'Unauthorized access to this reservation request.');
+        }
+
+        $proposal = $rentRequest->messages
+            ->where('sender_id', '!=', Auth::id())
+            ->whereNotNull('proposed_visit_date')
+            ->sortByDesc('created_at')
+            ->first();
+
+        if (!$proposal) {
+            return redirect()->back()->with('error', 'No reschedule proposal found to accept.');
+        }
+
+        $rentRequest->update(['visit_date' => $proposal->proposed_visit_date]);
+
+        RentMessage::create([
+            'request_id' => $rentRequest->id,
+            'sender_id' => Auth::id(),
+            'type_id' => Status::MSG_RESPONSE,
+            'note' => 'Renter accepted the proposed visit date: ' . $proposal->proposed_visit_date,
+        ]);
+
+        return redirect()->back()->with('success', 'You have accepted the proposed visit date.');
+    }
+
+    public function rejectReschedule(Request $request, RentRequest $rentRequest)
+    {
+        if ($rentRequest->renter_id !== Auth::id()) {
+            abort(403, 'Unauthorized access to this reservation request.');
+        }
+
+        $proposal = $rentRequest->messages
+            ->where('sender_id', '!=', Auth::id())
+            ->whereNotNull('proposed_visit_date')
+            ->sortByDesc('created_at')
+            ->first();
+
+        if (!$proposal) {
+            return redirect()->back()->with('error', 'No reschedule proposal found to reject.');
+        }
+
+        RentMessage::create([
+            'request_id' => $rentRequest->id,
+            'sender_id' => Auth::id(),
+            'type_id' => Status::MSG_RESPONSE,
+            'note' => 'Renter rejected the proposed visit date: ' . $proposal->proposed_visit_date,
+        ]);
+
+        return redirect()->back()->with('success', 'You have rejected the proposed visit date.');
+    }
 
     public function create(Request $request, Space $space){
         if (!Auth::user()->is_verified) {
