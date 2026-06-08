@@ -14,6 +14,14 @@
             </div>
         @endif
 
+        @if ($errors->any())
+            <div class="bg-red-100 text-red-700 text-xs p-3 rounded-xl mb-4">
+                @foreach ($errors->all() as $error)
+                    <div>{{ $error }}</div>
+                @endforeach
+            </div>
+        @endif
+
         <form method="POST" action="{{ route('register') }}" enctype="multipart/form-data" id="register-form" class="space-y-6">
             @csrf
 
@@ -110,7 +118,7 @@
                     </div>
                 </div>
             </div>
-
+            
             <div class="pt-5 border-t border-gray-100">
                 <h3 class="text-[11px] font-black text-gray-900 mb-3 uppercase tracking-wider">Verifikasi Identitas</h3>
                 
@@ -126,6 +134,7 @@
                             </div>
                             <img id="ktp-preview" class="hidden w-full h-24 object-cover rounded-xl mb-1">
                             <input type="file" name="ktp" id="ktp-input" class="hidden" accept="image/jpeg,image/png,image/jpg" required>
+                            <x-input-error :messages="$errors->get('ktp')" />
                         </label>
                     </div>
 
@@ -140,12 +149,13 @@
                             </div>
                             <img id="selfie-preview" class="hidden w-full h-24 object-cover rounded-xl mb-1">
                             <input type="file" name="selfie_ktp" id="selfie-input" class="hidden" accept="image/jpeg,image/png,image/jpg" required>
+                            <x-input-error :messages="$errors->get('selfie_ktp')" />
                         </label>
                     </div>
                 </div>
             </div>
-
             <div class="flex flex-col items-center justify-center pt-2">
+
                 <button type="submit" id="submit-btn" class="w-full md:w-auto bg-orange-500 text-white px-10 py-3.5 rounded-xl font-black text-sm shadow-xl shadow-orange-500/30 hover:bg-orange-600 active:scale-95 transition-all">
                     Daftar & Kirim Verifikasi
                 </button>

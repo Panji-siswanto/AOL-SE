@@ -88,6 +88,9 @@ class MarketplaceSeeder extends Seeder
             $reg1->documents()->createMany([
                 ['document_type_id' => $suratTanahTypeId, 'file_path' => 'dummy/sertifikat_1.pdf', 'description' => 'Sertifikat Hak Milik'],
             ]);
+            
+            // Adjusted path here
+            $reg1->photos()->create(['file_path' => 'dummy/space_1.jpg', 'is_primary' => true]);
 
             Space::create([
                 'owner_id' => $owner1->id, 'location_id' => $loc1->id, 'registration_id' => $reg1->id, 'name' => $reg1->name, 'description' => $reg1->description, 'length' => 2.0, 'width' => 2.0, 'area' => 4.0, 'price' => 1500000, 'status_id' => $spcAvailable,
@@ -108,6 +111,9 @@ class MarketplaceSeeder extends Seeder
         if ($reg2->wasRecentlyCreated) {
             $reg2->prices()->create(['pricing_type_id' => $dailyPricing, 'price' => 50000]);
             $reg2->documents()->createMany([['document_type_id' => $suratTanahTypeId, 'file_path' => 'dummy/sertifikat_2.pdf', 'description' => 'Sertifikat']]);
+            
+            // Adjusted path here
+            $reg2->photos()->create(['file_path' => 'dummy/space_2.jpg', 'is_primary' => true]);
         }
 
 
@@ -124,6 +130,9 @@ class MarketplaceSeeder extends Seeder
         if ($reg3Live->wasRecentlyCreated) {
             $reg3Live->prices()->create(['pricing_type_id' => $monthlyPricing, 'price' => 3000000]);
             $reg3Live->documents()->createMany([['document_type_id' => $suratTanahTypeId, 'file_path' => 'dummy/sertifikat_3a.pdf', 'description' => 'Sertifikat Kios']]);
+            
+            // Reusing space_1 for variety
+            $reg3Live->photos()->create(['file_path' => 'dummy/space_1.jpg', 'is_primary' => true]);
 
             Space::create([
                 'owner_id' => $owner3->id, 'location_id' => $loc3->id, 'registration_id' => $reg3Live->id, 'name' => $reg3Live->name, 'description' => $reg3Live->description, 'length' => 3.0, 'width' => 4.0, 'area' => 12.0, 'price' => 3000000, 'status_id' => $spcAvailable,
@@ -138,6 +147,8 @@ class MarketplaceSeeder extends Seeder
         if ($reg3Pending->wasRecentlyCreated) {
             $reg3Pending->prices()->create(['pricing_type_id' => $monthlyPricing, 'price' => 800000]);
             $reg3Pending->documents()->createMany([['document_type_id' => $perjanjianSewaTypeId, 'file_path' => 'dummy/izin_3b.pdf', 'description' => 'Izin Gelar Lapak']]);
+            
+            $reg3Pending->photos()->create(['file_path' => 'dummy/space_2.jpg', 'is_primary' => true]);
         }
 
         // ---------------------------------------------------------
@@ -162,7 +173,7 @@ class MarketplaceSeeder extends Seeder
             ['owner' => $owner3, 'name' => 'Stand Pameran ICE BSD', 'address' => 'Jl. BSD Grand Boulevard', 'city' => 'Tangerang', 'province' => 'Banten', 'lat' => -6.2986, 'lng' => 106.6358, 'area' => 9.0, 'price' => 1500000, 'pricing' => $dailyPricing],
         ];
 
-        foreach ($newLiveSpaces as $data) {
+        foreach ($newLiveSpaces as $index => $data) {
             $loc = Location::firstOrCreate(
                 ['address' => $data['address']], 
                 ['city' => $data['city'], 'province' => $data['province'], 'latitude' => $data['lat'], 'longitude' => $data['lng']]
@@ -176,6 +187,12 @@ class MarketplaceSeeder extends Seeder
             if ($reg->wasRecentlyCreated) {
                 $reg->prices()->create(['pricing_type_id' => $data['pricing'], 'price' => $data['price']]);
                 $reg->documents()->create(['document_type_id' => $perjanjianSewaTypeId, 'file_path' => 'dummy/izin_mass.pdf', 'description' => 'Izin Auto-Generated']);
+                
+                $photoNum = ($index % 2) + 1;
+                $reg->photos()->create([
+                    'file_path' => 'dummy/space_' . $photoNum . '.jpg', 
+                    'is_primary' => true
+                ]);
 
                 Space::create([
                     'owner_id'        => $data['owner']->id,
