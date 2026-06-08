@@ -11,6 +11,7 @@ use App\Models\RentMessage;
 use App\Models\RentRequest;
 use App\Models\RentReschedule;
 use App\Models\Status;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -41,7 +42,6 @@ class RentManagementController extends Controller
 
     public function approve(ApproveRentRequest $request, RentRequest $rentRequest)
     {
-
         DB::transaction(function () use ($rentRequest, $request) {
             $rentRequest->update(['status_id' => Status::RNT_REQ_ACCEPTED]);
 
@@ -71,7 +71,8 @@ class RentManagementController extends Controller
                 RentMessage::create([
                     'request_id' => $rentRequest->id,
                     'sender_id'  => Auth::id(),
-                    'context'    => 'approval_note',
+                    // Safely fetch the integer ID instead of passing a string
+                    'type_id'    => Status::where('code', 'msg_approval_note')->value('id'),
                     'message'    => $request->response_note,
                 ]);
             }
@@ -84,11 +85,14 @@ class RentManagementController extends Controller
     {
         DB::transaction(function () use ($rentRequest, $request) {
             $rentRequest->update(['status_id' => Status::RNT_REQ_REJECTED]);
-
+            
+            // Safely fetch the correct ID for decline reason
+            $declineMessageTypeId = Status::where('code', 'msg_decline_reason')->value('id');
+            
             RentMessage::create([
                 'request_id' => $rentRequest->id,
                 'sender_id'  => Auth::id(),
-                'context'    => 'decline_reason',
+                'type_id'    => $declineMessageTypeId,
                 'message'    => $request->reject_reason,
             ]);
         });
@@ -96,25 +100,77 @@ class RentManagementController extends Controller
         return redirect()->route('owner.reservations.index')->with('success', 'Rent request has been rejected.');
     }
 
+ // Update the existing reschedule method
     public function reschedule(RescheduleRentRequest $request, RentRequest $rentRequest)
     {
         DB::transaction(function () use ($rentRequest, $request) {
-            
-            $rentRequest->update(['visit_date' => $request->new_visit_date]);
-
             $message = RentMessage::create([
                 'request_id' => $rentRequest->id,
                 'sender_id'  => Auth::id(),
-                'context'    => 'reschedule_proposal',
-                'message'    => $request->response_note,
-            ]);
+                'type_id'    => Status::where('code', 'msg_reschedule_proposal')->value('id'),
+                'message' => $request->response_note ?? 'I have proposed new dates for this reservation.',            
+        ]);
 
             RentReschedule::create([
                 'rent_message_id'     => $message->id,
                 'proposed_visit_date' => $request->new_visit_date,
+                'proposed_start_date' => $request->new_start_date,
+                'proposed_end_date'   => $request->new_end_date,
             ]);
         });
 
-        return redirect()->route('owner.reservations.show', $rentRequest->id)->with('success', 'New visit date proposal has been sent.');
+        return redirect()->back()->with('success', 'New dates proposed successfully!');
+    }
+
+    // Add these two NEW methods below it
+    public function acceptReschedule(Request $request, RentRequest $rentRequest)
+    {
+        $proposalMsg = $rentRequest->messages()->where('sender_id', '!=', Auth::id())
+            ->where('type_id', Status::where('code', 'msg_reschedule_proposal')->value('id'))
+            ->whereHas('reschedule')->latest()->first();
+
+        if (!$proposalMsg) return redirect()->back()->with('error', 'No proposal found.');
+
+        DB::transaction(function () use ($rentRequest, $proposalMsg) {
+            $prop = $proposalMsg->reschedule;
+            
+            // Recalculate the price based on new dates
+            $start = \Carbon\Carbon::parse($prop->proposed_start_date);
+            $end = \Carbon\Carbon::parse($prop->proposed_end_date);
+            $code = strtolower($rentRequest->pricing->pricingType->code);
+            
+            $duration = 1;
+            if ($code === 'daily') $duration = $start->diffInDays($end) ?: 1;
+            if ($code === 'weekly') $duration = $start->diffInWeeks($end) ?: 1;
+            if ($code === 'monthly') $duration = $start->diffInMonths($end) ?: 1;
+
+            $rentRequest->update([
+                'visit_date'  => $prop->proposed_visit_date,
+                'start_date'  => $prop->proposed_start_date,
+                'end_date'    => $prop->proposed_end_date,
+                'total_price' => $duration * $rentRequest->pricing->price,
+            ]);
+
+            RentMessage::create([
+                'request_id' => $rentRequest->id,
+                'sender_id'  => Auth::id(),
+                'type_id'    => Status::where('code', 'msg_reschedule_accepted')->value('id'),
+                'message' => $request->response_note ?? 'I accept your counter-proposal. The dates and prices have been updated.',            
+            ]);
+        });
+
+        return redirect()->back()->with('success', 'Counter-proposal accepted! Dates and total price have been updated.');
+    }
+
+    public function rejectReschedule(Request $request, RentRequest $rentRequest)
+    {
+        RentMessage::create([
+            'request_id' => $rentRequest->id,
+            'sender_id'  => Auth::id(),
+            'type_id'    => Status::where('code', 'msg_reschedule_rejected')->value('id'),
+            'message' => $request->response_note ?? 'I cannot accommodate the proposed dates',            
+        ]);
+
+        return redirect()->back()->with('success', 'You rejected the counter-proposal.');
     }
 }

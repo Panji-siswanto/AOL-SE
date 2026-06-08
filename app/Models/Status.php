@@ -19,56 +19,53 @@ class Status extends Model
         'name',
     ];
 
-    // Registration Statuses
-    public const REG_PENDING = 1;
-    public const REG_APPROVED = 2;
-    public const REG_REJECTED = 3;
+    public const USR_UNVERIFIED = 1;
+    public const USR_VERIFY_PENDING = 2;
+    public const USR_VERIFIED = 3;
+    public const USR_REJECTED = 4;
 
-    // Space Statuses
-    public const SPC_AVAILABLE = 4;
-    public const SPC_PAUSED = 5;
-    public const SPC_UNLISTED = 6;
-    public const SPC_SUSPENDED = 7;
+    public const REG_PENDING = 5;
+    public const REG_APPROVED = 6;
+    public const REG_REJECTED = 7;
 
-    // Rent Request Statuses
-    public const RNT_REQ_PENDING = 8;
-    public const RNT_REQ_ACCEPTED = 9;
-    public const RNT_REQ_REJECTED = 10;
-    public const RNT_REQ_CANCELLED = 11;
+    public const SPC_AVAILABLE = 8;
+    public const SPC_PAUSED = 9;
+    public const SPC_UNLISTED = 10;
+    public const SPC_SUSPENDED = 11;
 
-    // Rent Statuses
-    public const RNT_ONGOING = 12;
-    public const RNT_COMPLETED = 13;
-    public const RNT_CANCELLED = 14;
+    public const RNT_REQ_PENDING = 12;
+    public const RNT_REQ_ACCEPTED = 13;
+    public const RNT_REQ_REJECTED = 14;
+    public const RNT_REQ_CANCELLED = 15;
 
-    // Message Statuses 
-    public const MSG_PROPOSAL            = 15;
-    public const MSG_RESPONSE            = 16;
-    public const MSG_APPLICATION         = 21; // initial 
-    public const MSG_DECLINE_REASON      = 22; // Owner's rejection reason
-    public const MSG_RESCHEDULE_PROPOSAL = 23; // propose new date
-    public const MSG_RESCHEDULE_ACCEPTED = 24; // Renter says yes
-    public const MSG_RESCHEDULE_REJECTED = 25; // Renter says no
+    public const RNT_ONGOING = 16;
+    public const RNT_COMPLETED = 17;
+    public const RNT_CANCELLED = 18;
 
-    // User Identity Verification Statuses
-    public const USR_UNVERIFIED = 17;
-    public const USR_VERIFY_PENDING = 18;
-    public const USR_VERIFIED = 19;
-    public const USR_REJECTED = 20;
+    public const MSG_APPLICATION = 19;            
+    public const MSG_APPROVAL_NOTE = 20;      
+    public const MSG_DECLINE_REASON = 21;      
+    public const MSG_RESCHEDULE_PROPOSAL = 22;  
+    public const MSG_RESCHEDULE_ACCEPTED = 23;  
+    public const MSG_RESCHEDULE_REJECTED = 24;  
 
-    public function spaces(){
+    public function spaces()
+    {
         return $this->hasMany(Space::class);
     }
 
-    public function spaceRegistrations(){
+    public function spaceRegistrations()
+    {
         return $this->hasMany(SpaceRegistration::class);
     }
 
-    public function rentRequests(){
+    public function rentRequests()
+    {
         return $this->hasMany(RentRequest::class);
     }
 
-    public function rents(){
+    public function rents()
+    {
         return $this->hasMany(Rent::class);
     }
 }

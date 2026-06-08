@@ -14,7 +14,6 @@ return new class extends Migration
         Schema::create('rent_reschedules', function (Blueprint $table) {
             $table->id();
             $table->foreignId('rent_message_id')->constrained('rent_messages')->cascadeOnDelete();
-            
             $table->date('proposed_start_date')->nullable();
             $table->date('proposed_end_date')->nullable();
             $table->date('proposed_visit_date')->nullable();

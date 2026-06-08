@@ -33,8 +33,16 @@
                                 </div>
 
                                 <div class="flex-shrink-0">
-                                    @if($request->status_id == \App\Models\Status::RNT_REQ_PENDING)
-                                        <span class="bg-orange-50 text-orange-600 px-3 py-1.5 rounded-lg text-xs font-black border border-orange-100 tracking-wide uppercase">Action Required</span>
+                                    @php
+                                        $latestMsg = $request->messages->sortByDesc('created_at')->first();
+                                        $isMyTurn = $request->status_id == \App\Models\Status::RNT_REQ_PENDING && $latestMsg && $latestMsg->sender_id !== Auth::id();
+                                        $waitingForRenter = $request->status_id == \App\Models\Status::RNT_REQ_PENDING && $latestMsg && $latestMsg->sender_id === Auth::id();
+                                    @endphp
+
+                                    @if($isMyTurn)
+                                        <span class="bg-orange-50 text-orange-600 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider">Action Required</span>
+                                    @elseif($waitingForRenter)
+                                        <span class="bg-blue-50 text-blue-600 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider">Waiting for Renter</span>
                                     @elseif($request->status_id == \App\Models\Status::RNT_REQ_ACCEPTED)
                                         <span class="bg-teal-50 text-teal-600 px-3 py-1.5 rounded-lg text-xs font-black border border-teal-100 tracking-wide uppercase">Accepted</span>
                                     @elseif($request->status_id == \App\Models\Status::RNT_REQ_REJECTED)

@@ -32,7 +32,11 @@ Route::middleware(['auth', 'verified'])->prefix('rents')->name('rents.')->group(
     // Reschedule flow actions
     Route::post('/{rentRequest}/reschedule/accept', [RentRequestController::class, 'acceptReschedule'])->name('reschedule.accept');
     Route::post('/{rentRequest}/reschedule/reject', [RentRequestController::class, 'rejectReschedule'])->name('reschedule.reject');
+    Route::post('/{rentRequest}/reschedule/propose', [RentRequestController::class, 'proposeReschedule'])->name('reschedule.propose'); 
+    Route::post('/{rentRequest}/cancel', [RentRequestController::class, 'cancel'])->name('cancel');
 });
+
+
 
 // Accounts
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -55,6 +59,7 @@ Route::middleware(['auth', 'verified'])->prefix('owner')->name('owner.')->group(
     Route::post('reservations/{rentRequest}/approve', [RentManagementController::class, 'approve'])->name('reservations.approve');
     Route::post('reservations/{rentRequest}/reject', [RentManagementController::class, 'reject'])->name('reservations.reject');
     Route::post('reservations/{rentRequest}/reschedule', [RentManagementController::class, 'reschedule'])->name('reservations.reschedule');
+    Route::post('reservations/{rentRequest}/reschedule/accept', [RentManagementController::class, 'acceptReschedule'])->name('reservations.reschedule.accept'); 
     
     Route::prefix('spaces/registrations')->name('spaces.registrations.')->group(function () {
         Route::get('/create', [SpaceRegistrationController::class, 'create'])->name('create');

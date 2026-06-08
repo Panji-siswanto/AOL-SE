@@ -9,6 +9,9 @@ use App\Models\Space;
 use App\Models\SpaceRegistration;
 use App\Models\Status;
 use App\Models\User;
+use App\Models\RentRequest;   // <-- Added
+use App\Models\RentMessage;   // <-- Added
+use Carbon\Carbon;            // <-- Added
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -20,10 +23,13 @@ class MarketplaceSeeder extends Seeder
     {
         Storage::disk('public')->makeDirectory('dummy');
 
+        // Added status codes for rent requests and messages
         $regPending = Status::where('code', 'reg_pending')->value('id');
         $regApproved = Status::where('code', 'reg_approved')->value('id');
         $spcAvailable = Status::where('code', 'spc_available')->value('id');
         $verifiedStatus = Status::where('code', 'usr_verified')->value('id');
+        $rntReqPending = Status::where('code', 'rnt_req_pending')->value('id');
+        $msgApplication = Status::where('code', 'msg_application')->value('id');
 
         $dailyPricing = PricingType::where('code', 'daily')->value('id');
         $monthlyPricing = PricingType::where('code', 'monthly')->value('id');
@@ -206,6 +212,62 @@ class MarketplaceSeeder extends Seeder
                     'area'            => $data['area'],
                     'price'           => $data['price'],
                     'status_id'       => $spcAvailable,
+                ]);
+            }
+        }
+
+        // ---------------------------------------------------------
+        // GENERATE PENDING RENT REQUESTS FOR OWNER 3
+        // ---------------------------------------------------------
+        // We grab two spaces that belong to owner 3
+        $owner3Spaces = Space::where('owner_id', $owner3->id)->take(2)->get();
+
+        foreach ($owner3Spaces as $index => $space) {
+            // Get the pricing package for this space
+            $pricing = $space->registration->prices->first(); 
+            
+            // Set dynamic future dates
+            $startDate = Carbon::now()->addDays(10 + ($index * 5));
+            $endDate = clone $startDate;
+            $visitDate = $startDate->copy()->subDays(3);
+            
+            $duration = 3; // e.g., Renting for 3 Units (Days/Months)
+            $type = strtolower($pricing->pricingType->code);
+            
+            // Calculate accurate end date
+            if ($type === 'daily') {
+                $endDate->addDays($duration);
+            } elseif ($type === 'weekly') {
+                $endDate->addWeeks($duration);
+            } elseif ($type === 'monthly') {
+                $endDate->addMonths($duration);
+            }
+            
+            $totalPrice = $pricing->price * $duration;
+
+            // Create the pending request using Owner 1 as the renter
+            $request = RentRequest::firstOrCreate(
+                [
+                    'renter_id' => $owner1->id, 
+                    'space_id'  => $space->id
+                ],
+                [
+                    'pricing_id'  => $pricing->id,
+                    'start_date'  => $startDate->toDateString(),
+                    'end_date'    => $endDate->toDateString(),
+                    'visit_date'  => $visitDate->toDateString(),
+                    'total_price' => $totalPrice,
+                    'status_id'   => $rntReqPending,
+                ]
+            );
+
+            // If it was just created, attach the application message to the timeline
+            if ($request->wasRecentlyCreated) {
+                RentMessage::create([
+                    'request_id' => $request->id,
+                    'sender_id'  => $owner1->id,
+                    'type_id'    => $msgApplication,
+                    'message'    => "Hi {$owner3->name}, I am very interested in renting '{$space->name}'. I have a solid business plan and would love to meet you on the visit date!",
                 ]);
             }
         }

@@ -5,7 +5,10 @@ use Illuminate\Database\Eloquent\Model;
 class RentReschedule extends Model
 {
     protected $fillable = [
-        'rent_message_id', 'proposed_start_date', 'proposed_end_date', 'proposed_visit_date'
+        'rent_message_id', 
+        'proposed_visit_date', 
+        'proposed_start_date', 
+        'proposed_end_date'
     ];
 
     public function message()
