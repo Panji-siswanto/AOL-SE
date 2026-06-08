@@ -30,9 +30,9 @@ Route::middleware(['auth', 'verified'])->prefix('rents')->name('rents.')->group(
     Route::post('/{space}/apply', [RentRequestController::class, 'store'])->name('store');
     
     // Reschedule flow actions
-    Route::post('/{rentRequest}/reschedule/accept', [RentRequestController::class, 'acceptReschedule'])->name('reschedule.accept');
-    Route::post('/{rentRequest}/reschedule/reject', [RentRequestController::class, 'rejectReschedule'])->name('reschedule.reject');
-    Route::post('/{rentRequest}/reschedule/propose', [RentRequestController::class, 'proposeReschedule'])->name('reschedule.propose'); 
+    Route::post('/{rentRequest}/approve', [RentRequestController::class, 'approve'])->name('approve');
+    Route::post('/{rentRequest}/reject', [RentRequestController::class, 'reject'])->name('reject');
+    Route::post('/{rentRequest}/reschedule', [RentRequestController::class, 'reschedule'])->name('reschedule');
     Route::post('/{rentRequest}/cancel', [RentRequestController::class, 'cancel'])->name('cancel');
 });
 
@@ -56,10 +56,9 @@ Route::middleware(['auth', 'verified'])->prefix('owner')->name('owner.')->group(
     // Rent Management
     Route::get('reservations', [RentManagementController::class, 'index'])->name('reservations.index');
     Route::get('reservations/{rentRequest}', [RentManagementController::class, 'show'])->name('reservations.show');
-    Route::post('reservations/{rentRequest}/approve', [RentManagementController::class, 'approve'])->name('reservations.approve');
+   Route::post('reservations/{rentRequest}/approve', [RentManagementController::class, 'approve'])->name('reservations.approve');
     Route::post('reservations/{rentRequest}/reject', [RentManagementController::class, 'reject'])->name('reservations.reject');
     Route::post('reservations/{rentRequest}/reschedule', [RentManagementController::class, 'reschedule'])->name('reservations.reschedule');
-    Route::post('reservations/{rentRequest}/reschedule/accept', [RentManagementController::class, 'acceptReschedule'])->name('reservations.reschedule.accept'); 
     
     Route::prefix('spaces/registrations')->name('spaces.registrations.')->group(function () {
         Route::get('/create', [SpaceRegistrationController::class, 'create'])->name('create');
