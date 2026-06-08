@@ -41,16 +41,15 @@ class RegisteredUserController extends Controller
                 'phone'=> $request->phone_code . $request->phone,
                 'password' => Hash::make($request->password),
                 'ver_status' => $pendingId,
+                'email_verified_at'=> now(),
             ]);
 
             $user->assignRole('renter');
 
-            // Store files
             $dir = "staging/verifications/{$user->id}";
             $ktpPath = $request->file('ktp')->store($dir, 'public');
             $selfiePath = $request->file('selfie_ktp')->store($dir, 'public');
 
-            // Create Log & Link Documents
             $log = VerificationLog::create([
                 'user_id'=> $user->id,
                 'status_id' => $pendingId,
@@ -61,11 +60,12 @@ class RegisteredUserController extends Controller
                 ['document_type_id' => $selfieTypeId, 'file_path' => $selfiePath, 'description' => 'Selfie Verification'],
             ]);
 
-          DB::commit();
+            DB::commit();
 
-        Auth::login($user);
+            event(new Registered($user));
+            Auth::login($user);
 
-        return redirect()->route('dashboard');
+            return redirect()->route('verification.notice');
 
         } catch (\Exception $e) {
             DB::rollBack();
