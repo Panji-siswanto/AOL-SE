@@ -20,7 +20,6 @@ class MarketplaceSeeder extends Seeder
     {
         Storage::disk('public')->makeDirectory('dummy');
 
-       
         $regPending = Status::where('code', 'reg_pending')->value('id');
         $regApproved = Status::where('code', 'reg_approved')->value('id');
         $spcAvailable = Status::where('code', 'spc_available')->value('id');
