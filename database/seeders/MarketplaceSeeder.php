@@ -11,12 +11,15 @@ use App\Models\Status;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
 
 class MarketplaceSeeder extends Seeder
 {
     public function run(): void
     {
+        Storage::disk('public')->makeDirectory('dummy');
+
         $regPending = Status::where('code', 'reg_pending')->value('id');
         $regApproved = Status::where('code', 'reg_approved')->value('id');
         $spcAvailable = Status::where('code', 'spc_available')->value('id');
@@ -89,7 +92,6 @@ class MarketplaceSeeder extends Seeder
                 ['document_type_id' => $suratTanahTypeId, 'file_path' => 'dummy/sertifikat_1.pdf', 'description' => 'Sertifikat Hak Milik'],
             ]);
             
-            // Adjusted path here
             $reg1->photos()->create(['file_path' => 'dummy/space_1.jpg', 'is_primary' => true]);
 
             Space::create([
@@ -112,7 +114,6 @@ class MarketplaceSeeder extends Seeder
             $reg2->prices()->create(['pricing_type_id' => $dailyPricing, 'price' => 50000]);
             $reg2->documents()->createMany([['document_type_id' => $suratTanahTypeId, 'file_path' => 'dummy/sertifikat_2.pdf', 'description' => 'Sertifikat']]);
             
-            // Adjusted path here
             $reg2->photos()->create(['file_path' => 'dummy/space_2.jpg', 'is_primary' => true]);
         }
 
@@ -131,7 +132,6 @@ class MarketplaceSeeder extends Seeder
             $reg3Live->prices()->create(['pricing_type_id' => $monthlyPricing, 'price' => 3000000]);
             $reg3Live->documents()->createMany([['document_type_id' => $suratTanahTypeId, 'file_path' => 'dummy/sertifikat_3a.pdf', 'description' => 'Sertifikat Kios']]);
             
-            // Reusing space_1 for variety
             $reg3Live->photos()->create(['file_path' => 'dummy/space_1.jpg', 'is_primary' => true]);
 
             Space::create([
@@ -155,7 +155,6 @@ class MarketplaceSeeder extends Seeder
         // MASS GENERATION (New Live Spaces for Discovery Feed)
         // ---------------------------------------------------------
         $newLiveSpaces = [
-            // Original
             ['owner' => $owner1, 'name' => 'Lapak Kuliner Binus Syahdan', 'address' => 'Jl. K.H. Syahdan No. 9', 'city' => 'Jakarta Barat', 'province' => 'DKI Jakarta', 'lat' => -6.2001, 'lng' => 106.7854, 'area' => 6.0, 'price' => 1200000, 'pricing' => $monthlyPricing],
             ['owner' => $owner1, 'name' => 'Booth Pameran Mal Taman Anggrek', 'address' => 'Letjen S. Parman St No.28', 'city' => 'Jakarta Barat', 'province' => 'DKI Jakarta', 'lat' => -6.1785, 'lng' => 106.7922, 'area' => 9.0, 'price' => 500000, 'pricing' => $dailyPricing],
             ['owner' => $owner2, 'name' => 'Area Foodtruck Alam Sutera', 'address' => 'Kawasan CBD Alam Sutera', 'city' => 'Tangerang', 'province' => 'Banten', 'lat' => -6.2250, 'lng' => 106.6500, 'area' => 18.0, 'price' => 3500000, 'pricing' => $monthlyPricing],
@@ -163,8 +162,6 @@ class MarketplaceSeeder extends Seeder
             ['owner' => $owner3, 'name' => 'Ruko Sentra Gading Serpong', 'address' => 'Jl. Boulevard Gading Serpong', 'city' => 'Tangerang', 'province' => 'Banten', 'lat' => -6.2400, 'lng' => 106.6288, 'area' => 24.0, 'price' => 6000000, 'pricing' => $monthlyPricing],
             ['owner' => $owner3, 'name' => 'Emperan Ruko Karawaci', 'address' => 'Supermal Karawaci Area', 'city' => 'Tangerang', 'province' => 'Banten', 'lat' => -6.2260, 'lng' => 106.6074, 'area' => 2.5, 'price' => 850000, 'pricing' => $monthlyPricing],
             ['owner' => $owner3, 'name' => 'Lapak Stasiun Rawa Buntu', 'address' => 'Area Parkir Stasiun Rawa Buntu', 'city' => 'Tangerang Selatan', 'province' => 'Banten', 'lat' => -6.3194, 'lng' => 106.6836, 'area' => 3.0, 'price' => 100000, 'pricing' => $dailyPricing],
-            
-            // New Additions for Quantity
             ['owner' => $owner1, 'name' => 'Bazar Dadakan Senayan', 'address' => 'Area Parkir Timur Senayan', 'city' => 'Jakarta Pusat', 'province' => 'DKI Jakarta', 'lat' => -6.2146, 'lng' => 106.8015, 'area' => 4.0, 'price' => 250000, 'pricing' => $dailyPricing],
             ['owner' => $owner2, 'name' => 'Lapak CFD Bundaran HI', 'address' => 'Jl. M.H. Thamrin', 'city' => 'Jakarta Pusat', 'province' => 'DKI Jakarta', 'lat' => -6.1948, 'lng' => 106.8231, 'area' => 2.0, 'price' => 150000, 'pricing' => $dailyPricing],
             ['owner' => $owner3, 'name' => 'Kios Blok M Square', 'address' => 'Jl. Melawai 5', 'city' => 'Jakarta Selatan', 'province' => 'DKI Jakarta', 'lat' => -6.2444, 'lng' => 106.8006, 'area' => 6.0, 'price' => 2000000, 'pricing' => $monthlyPricing],
