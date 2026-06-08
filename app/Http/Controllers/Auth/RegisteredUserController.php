@@ -61,12 +61,11 @@ class RegisteredUserController extends Controller
                 ['document_type_id' => $selfieTypeId, 'file_path' => $selfiePath, 'description' => 'Selfie Verification'],
             ]);
 
-            DB::commit();
+          DB::commit();
 
-            event(new Registered($user));
-            Auth::login($user);
+        Auth::login($user);
 
-            return redirect()->route('verification.notice');
+        return redirect()->route('dashboard');
 
         } catch (\Exception $e) {
             DB::rollBack();

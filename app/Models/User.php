@@ -27,7 +27,7 @@ use Spatie\Permission\Traits\HasRoles;
     'verified_at'])]
 #[Hidden(['password', 'remember_token'])]
 
-class User extends Authenticatable implements MustVerifyEmail
+class User extends Authenticatable 
 {
     use HasFactory, Notifiable, HasRoles;
 
