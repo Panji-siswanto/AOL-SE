@@ -50,6 +50,11 @@ class RentRequest extends Model
         return $this->belongsTo(SpaceRegistrationPrice::class, 'pricing_id');
     }
 
+    public function reschedules()
+    {
+        return $this->hasMany(RentReschedule::class, 'rent_request_id');
+    }
+
      public function getDurationAttribute(): ?int
     {
         if (!$this->pricing || !$this->pricing->price) {

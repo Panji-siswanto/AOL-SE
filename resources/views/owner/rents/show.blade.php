@@ -9,9 +9,25 @@
             $rejectedId = \App\Models\Status::where('code', 'rnt_req_rejected')->value('id');
             $cancelledId = \App\Models\Status::where('code', 'rnt_req_cancelled')->value('id');
 
-            $latestMsg = $rentRequest->messages->sortByDesc('created_at')->first();
-            $isMyTurn = $rentRequest->status_id == $pendingId && $latestMsg && $latestMsg->sender_id !== Auth::id();
-            $waitingForRenter = $rentRequest->status_id == $pendingId && $latestMsg && $latestMsg->sender_id === Auth::id();
+            // --- UNIFIED TIMELINE LOGIC ---
+            $timeline = collect();
+            foreach($rentRequest->messages as $msg) {
+                $timeline->push((object)['type' => 'message', 'model' => $msg, 'time' => $msg->created_at, 'sender_id' => $msg->sender_id]);
+            }
+            foreach($rentRequest->reschedules as $resc) {
+                $timeline->push((object)['type' => 'reschedule', 'model' => $resc, 'time' => $resc->created_at, 'sender_id' => $resc->sender_id]);
+            }
+            
+            $latestInteraction = $timeline->sortByDesc('time')->first();
+            
+            // Turn logic
+            $isMyTurn = $rentRequest->status_id == $pendingId && $latestInteraction && $latestInteraction->sender_id !== Auth::id();
+            $waitingForRenter = $rentRequest->status_id == $pendingId && $latestInteraction && $latestInteraction->sender_id === Auth::id();
+
+            $latestReschedule = $rentRequest->reschedules->sortByDesc('created_at')->first();
+            $latestMessage = $rentRequest->messages->where('sender_id', '!=', Auth::id())->sortByDesc('created_at')->first();
+            
+            $isPendingReschedule = $latestInteraction && $latestInteraction->type === 'reschedule';
         @endphp
 
         <div class="mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
@@ -33,7 +49,6 @@
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 xl:gap-12 items-start">
             <div class="lg:col-span-2 space-y-8">
                 
-                {{-- Space Summary --}}
                 <div class="bg-white p-6 sm:p-8 rounded-[2rem] border border-gray-100 shadow-sm grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 items-start">
                     <div class="md:col-span-1 w-full aspect-video rounded-xl overflow-hidden bg-gray-100 relative">
                         <img src="{{ $rentRequest->space->cover_photo_url }}" class="absolute inset-0 w-full h-full object-cover">
@@ -51,27 +66,20 @@
                     </div>
                 </div>
 
-                {{-- Latest Message Widget --}}
-                <div class="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm">
-                    <h3 class="text-xl font-black text-gray-900 mb-6 flex items-center gap-2"><span>💬</span> Latest Message</h3>
-                    @if($latestMsg && $latestMsg->message)
+                {{-- Clean Message Box --}}
+                @if($latestMessage)
+                    <div class="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm">
+                        <h3 class="text-xl font-black text-gray-900 mb-6 flex items-center gap-2"><span>💬</span> Latest Message</h3>
                         <div class="bg-gray-50 p-6 rounded-2xl border border-gray-200">
                             <div class="flex justify-between items-center mb-3">
-                                <span class="text-[10px] font-black uppercase tracking-wider {{ $latestMsg->sender_id == Auth::id() ? 'text-teal-600' : 'text-blue-600' }}">
-                                    From: {{ $latestMsg->sender_id == Auth::id() ? 'You' : $rentRequest->renter->name }}
-                                </span>
-                                <span class="text-[10px] text-gray-400">{{ \Carbon\Carbon::parse($latestMsg->created_at)->diffForHumans() }}</span>
+                                <span class="text-[10px] font-black uppercase tracking-wider text-blue-600">From: Renter</span>
+                                <span class="text-[10px] text-gray-400">{{ \Carbon\Carbon::parse($latestMessage->created_at)->diffForHumans() }}</span>
                             </div>
-                            <p class="text-gray-700 font-medium leading-relaxed whitespace-pre-line">{{ $latestMsg->message }}</p>
+                            <p class="text-gray-700 font-medium leading-relaxed whitespace-pre-line">{{ $latestMessage->message }}</p>
                         </div>
-                    @else
-                        <div class="bg-gray-50 p-6 rounded-2xl border border-gray-100 border-dashed text-center">
-                            <p class="text-sm font-bold text-gray-400">No message attached.</p>
-                        </div>
-                    @endif
-                </div>
+                    </div>
+                @endif
 
-                {{-- Timeline Details (Always displays the CURRENT mutated state of the request) --}}
                 <div class="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm">
                     <h3 class="text-xl font-black text-gray-900 mb-6 flex items-center gap-2"><span>📅</span> Active Contract Dates</h3>
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
@@ -98,7 +106,6 @@
                 </div>
             </div>
 
-            {{-- Action Widget --}}
             <div class="lg:col-span-1 sticky top-28 space-y-6">
                 <div class="bg-white p-6 sm:p-8 rounded-[2rem] border border-gray-200 shadow-xl shadow-gray-100/50">
                     <h3 class="text-sm font-black uppercase tracking-wider text-gray-400 mb-6 border-b border-gray-100 pb-4">Financial Summary</h3>
@@ -113,12 +120,9 @@
                         </div>
                     </div>
 
-                    {{-- The ONLY 3 Buttons you need! --}}
                     @if($isMyTurn)
                         <div class="space-y-3 pt-6 border-t border-gray-100">
-                            <form action="{{ route('owner.reservations.approve', $rentRequest->id) }}" method="POST">
-                                @csrf <button class="w-full bg-teal-600 hover:bg-teal-700 text-white py-3.5 rounded-2xl font-black transition-all active:scale-95 shadow-lg shadow-teal-600/30">Accept & Finalize</button>
-                            </form>
+                            <button @click.prevent="$dispatch('open-approve-modal')" class="w-full bg-teal-600 hover:bg-teal-700 text-white py-3.5 rounded-2xl font-black transition-all active:scale-95 shadow-lg shadow-teal-600/30">Accept Application</button>
                             <button @click.prevent="$dispatch('open-reschedule-modal')" class="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 py-3.5 rounded-2xl font-black transition-all active:scale-95 shadow-sm">Propose New Dates</button>
                             <button @click.prevent="$dispatch('open-decline-modal')" class="w-full bg-white hover:bg-red-50 text-red-500 hover:text-red-600 border-2 border-red-100 hover:border-red-200 py-3.5 rounded-2xl font-black transition-all active:scale-95">Decline Application</button>
                         </div>
@@ -133,35 +137,79 @@
                         </div>
                     @endif
                 </div>
+
+                @if($isMyTurn && $isPendingReschedule && $latestReschedule)
+                    <div class="bg-blue-50 border border-blue-200 rounded-[2rem] p-6 shadow-sm">
+                        <h4 class="font-black text-blue-900 mb-2 uppercase text-xs tracking-wider flex items-center gap-2"><span class="text-base">🔔</span> Renter Counter-Proposal</h4>
+                        
+                        @if($latestMessage && $latestMessage->created_at->diffInMinutes($latestReschedule->created_at) < 5)
+                            <p class="text-sm font-medium text-blue-800 mb-4 whitespace-pre-line">{{ $latestMessage->message }}</p>
+                        @else
+                            <p class="text-sm font-medium text-blue-800/60 italic mb-4">Dates proposed without additional comments.</p>
+                        @endif
+                        
+                        <div class="grid grid-cols-3 gap-2 mb-5 text-xs font-bold text-blue-900">
+                            <div class="bg-white/60 border border-blue-100 p-2 rounded-xl text-center">Visit<br>{{ $latestReschedule->proposed_visit_date ? \Carbon\Carbon::parse($latestReschedule->proposed_visit_date)->format('M d') : 'N/A' }}</div>
+                            <div class="bg-white/60 border border-blue-100 p-2 rounded-xl text-center">Start<br>{{ \Carbon\Carbon::parse($latestReschedule->proposed_start_date)->format('M d') }}</div>
+                            <div class="bg-white/60 border border-blue-100 p-2 rounded-xl text-center">End<br>{{ \Carbon\Carbon::parse($latestReschedule->proposed_end_date)->format('M d') }}</div>
+                        </div>
+
+                        <div class="flex gap-2">
+                            <button @click.prevent="$dispatch('open-approve-modal')" class="w-full bg-blue-600 text-white rounded-xl py-2.5 font-black text-sm hover:bg-blue-700 transition active:scale-95 shadow-sm">Accept Dates</button>
+                            <button @click.prevent="$dispatch('open-decline-modal')" class="w-full bg-white text-red-600 border border-red-200 rounded-xl py-2.5 font-black text-sm hover:bg-red-50 transition active:scale-95">Decline</button>
+                        </div>
+                    </div>
+                @endif
             </div>
         </div>
 
         {{-- MODALS SECTION --}}
         @if($rentRequest->status_id == $pendingId)
             
-            {{-- 1. Reschedule Modal (Alpine Math Included) --}}
+            {{-- 1. Approve Modal --}}
+            <div x-data="{ showApprove: false, showNote: false }" @open-approve-modal.window="showApprove = true" @keydown.escape.window="showApprove = false" class="relative z-50" x-cloak>
+                <div x-show="showApprove" x-transition.opacity class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm"></div>
+                <div x-show="showApprove" x-transition class="fixed inset-0 z-10 w-screen overflow-y-auto">
+                    <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                        <div @click.away="showApprove = false" class="relative transform overflow-hidden rounded-[2rem] bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg border border-gray-100 p-8">
+                            <h3 class="text-2xl font-black text-gray-900 mb-2">Accept Application</h3>
+                            <p class="text-sm text-gray-500 font-medium mb-4">You are about to accept the application from {{ $rentRequest->renter->name }}.</p>
+                            
+                            <form action="{{ route('owner.reservations.approve', $rentRequest->id) }}" method="POST" class="mt-4">
+                                @csrf
+                                <div class="mb-6">
+                                    <button x-show="!showNote" @click="showNote = true" type="button" class="inline-flex items-center gap-2 px-4 py-2 bg-teal-50 text-teal-700 font-bold text-sm rounded-xl hover:bg-teal-100 transition">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 4v16m8-8H4"/></svg> Add a message (Optional)
+                                    </button>
+                                    <div x-show="showNote" x-transition style="display: none;">
+                                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Your Message</label>
+                                        <textarea x-ref="noteInput" name="response_note" rows="3" class="w-full rounded-2xl border-gray-300 focus:border-teal-500 shadow-sm font-medium text-sm text-gray-700 resize-none"></textarea>
+                                        <button @click="showNote = false; $refs.noteInput.value = ''" type="button" class="mt-2 text-xs font-bold text-red-500 hover:text-red-700">Cancel message</button>
+                                    </div>
+                                </div>
+                                <div class="flex gap-3">
+                                    <button type="submit" class="w-full bg-teal-600 hover:bg-teal-700 text-white rounded-xl py-3 font-black transition active:scale-95 shadow-sm">Accept & Finalize</button>
+                                    <button type="button" @click="showApprove = false" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-900 rounded-xl py-3 font-bold transition">Cancel</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- 2. Reschedule Modal --}}
             <div x-data="{ 
-                    showReschedule: false,
-                    startDate: '{{ $rentRequest->start_date }}', 
-                    endDate: '{{ $rentRequest->end_date }}',
-                    visitDate: '{{ $rentRequest->visit_date }}',
-                    pricingCode: '{{ strtolower($rentRequest->pricing->pricingType->code) }}',
-                    pricePerUnit: {{ $rentRequest->pricing->price }},
+                    showReschedule: false, showNote: false,
+                    startDate: '{{ $rentRequest->start_date }}', endDate: '{{ $rentRequest->end_date }}', visitDate: '{{ $rentRequest->visit_date }}',
+                    pricingCode: '{{ strtolower($rentRequest->pricing->pricingType->code) }}', pricePerUnit: {{ $rentRequest->pricing->price }},
                     get durationText() {
                         if(!this.startDate || !this.endDate) return '0 Days';
                         let s = new Date(this.startDate); let e = new Date(this.endDate);
                         let diffTime = e - s; if (diffTime <= 0) return '0 Days';
                         let totalDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
                         if(this.pricingCode === 'daily') return totalDays + ' Day(s)';
-                        if(this.pricingCode === 'weekly') {
-                            let w = Math.floor(totalDays / 7); let d = totalDays % 7;
-                            let text = []; if (w > 0) text.push(w + ' Week(s)'); if (d > 0) text.push(d + ' Day(s)'); return text.join(', ');
-                        }
-                        if(this.pricingCode === 'monthly') {
-                            let m = Math.floor(totalDays / 30); let remDays = totalDays % 30;
-                            let w = Math.floor(remDays / 7); let d = remDays % 7;
-                            let text = []; if (m > 0) text.push(m + ' Month(s)'); if (w > 0) text.push(w + ' Week(s)'); if (d > 0) text.push(d + ' Day(s)'); return text.join(', ');
-                        }
+                        if(this.pricingCode === 'weekly') { let w = Math.floor(totalDays / 7); let d = totalDays % 7; let text = []; if (w > 0) text.push(w + ' Week(s)'); if (d > 0) text.push(d + ' Day(s)'); return text.join(', '); }
+                        if(this.pricingCode === 'monthly') { let m = Math.floor(totalDays / 30); let remDays = totalDays % 30; let w = Math.floor(remDays / 7); let d = remDays % 7; let text = []; if (m > 0) text.push(m + ' Month(s)'); if (w > 0) text.push(w + ' Week(s)'); if (d > 0) text.push(d + ' Day(s)'); return text.join(', '); }
                         return '0 Days';
                     },
                     get total() {
@@ -182,14 +230,8 @@
                             <h3 class="text-xl font-black text-gray-900 mb-2">Propose Alternative Dates</h3>
                             
                             <div class="bg-blue-50/50 p-4 rounded-xl mb-4 border border-blue-100 flex justify-between items-center mt-4">
-                                <div>
-                                    <p class="text-[10px] uppercase font-black text-blue-400">Total Duration</p>
-                                    <p class="text-sm font-black text-blue-900" x-text="durationText"></p>
-                                </div>
-                                <div class="text-right">
-                                    <p class="text-[10px] uppercase font-black text-blue-400">Prorated Total Price</p>
-                                    <p class="text-lg font-black text-teal-600" x-text="'Rp ' + new Intl.NumberFormat('id-ID').format(total)"></p>
-                                </div>
+                                <div><p class="text-[10px] uppercase font-black text-blue-400">Total Duration</p><p class="text-sm font-black text-blue-900" x-text="durationText"></p></div>
+                                <div class="text-right"><p class="text-[10px] uppercase font-black text-blue-400">Prorated Total Price</p><p class="text-lg font-black text-teal-600" x-text="'Rp ' + new Intl.NumberFormat('id-ID').format(total)"></p></div>
                             </div>
 
                             <form action="{{ route('owner.reservations.reschedule', $rentRequest->id) }}" method="POST">
@@ -208,11 +250,17 @@
                                         <input type="date" name="new_end_date" required x-model="endDate" :min="startDate" class="w-full rounded-2xl border-gray-300 focus:border-blue-500 shadow-sm font-medium text-sm text-gray-700">
                                     </div>
                                 </div>
-                                <div>
-                                    <label class="block text-xs font-bold text-gray-700 uppercase mb-2">Message</label>
-                                    <textarea name="response_note" rows="3" placeholder="Explain the change..." class="w-full rounded-2xl border-gray-300 focus:border-blue-500 shadow-sm font-medium text-sm text-gray-700 resize-none"></textarea>
+                                <div class="mb-6">
+                                    <button x-show="!showNote" @click="showNote = true" type="button" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 font-bold text-sm rounded-xl hover:bg-blue-100 transition">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 4v16m8-8H4"/></svg> Add a message (Optional)
+                                    </button>
+                                    <div x-show="showNote" x-transition style="display: none;">
+                                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Your Message</label>
+                                        <textarea x-ref="noteInput" name="response_note" rows="3" class="w-full rounded-2xl border-gray-300 focus:border-blue-500 shadow-sm font-medium text-sm text-gray-700 resize-none"></textarea>
+                                        <button @click="showNote = false; $refs.noteInput.value = ''" type="button" class="mt-2 text-xs font-bold text-red-500 hover:text-red-700">Cancel message</button>
+                                    </div>
                                 </div>
-                                <div class="mt-6 flex gap-3">
+                                <div class="flex gap-3">
                                     <button type="submit" :disabled="total === 0" :class="total === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700 active:scale-95'" class="w-full bg-blue-600 text-white rounded-xl py-3 font-black transition">Send Proposal</button>
                                     <button type="button" @click="showReschedule = false" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-900 rounded-xl py-3 font-bold transition">Cancel</button>
                                 </div>
@@ -222,21 +270,29 @@
                 </div>
             </div>
 
-            {{-- 2. Decline Modal --}}
-            <div x-data="{ showDecline: false }" @open-decline-modal.window="showDecline = true" @keydown.escape.window="showDecline = false" class="relative z-50" x-cloak>
+            {{-- 3. Decline Modal --}}
+            <div x-data="{ showDecline: false, showNote: false }" @open-decline-modal.window="showDecline = true" @keydown.escape.window="showDecline = false" class="relative z-50" x-cloak>
                 <div x-show="showDecline" x-transition.opacity class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm"></div>
                 <div x-show="showDecline" x-transition class="fixed inset-0 z-10 w-screen overflow-y-auto">
                     <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
                         <div @click.away="showDecline = false" class="relative transform overflow-hidden rounded-[2rem] bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg border border-gray-100 p-8">
-                            <h3 class="text-xl font-black text-gray-900 mb-2">Decline Application</h3>
+                            <h3 class="text-2xl font-black text-gray-900 mb-2">Decline Application</h3>
+                            <p class="text-sm text-gray-500 font-medium mb-4">Are you sure you want to decline this application? This action cannot be undone.</p>
+                            
                             <form action="{{ route('owner.reservations.reject', $rentRequest->id) }}" method="POST" class="mt-4">
                                 @csrf
-                                <div>
-                                    <label class="block text-xs font-bold text-gray-700 uppercase mb-2">Reason for Declining *</label>
-                                    <textarea name="reject_reason" required rows="3" placeholder="I'm sorry, but..." class="w-full rounded-2xl border-gray-300 focus:border-red-500 shadow-sm font-medium text-sm text-gray-700 resize-none"></textarea>
+                                <div class="mb-6">
+                                    <button x-show="!showNote" @click="showNote = true" type="button" class="inline-flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 font-bold text-sm rounded-xl hover:bg-red-100 transition">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 4v16m8-8H4"/></svg> Add a decline reason (Optional)
+                                    </button>
+                                    <div x-show="showNote" x-transition style="display: none;">
+                                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Decline Reason</label>
+                                        <textarea x-ref="noteInput" name="reject_reason" rows="3" class="w-full rounded-2xl border-gray-300 focus:border-red-500 shadow-sm font-medium text-sm text-gray-700 resize-none"></textarea>
+                                        <button @click="showNote = false; $refs.noteInput.value = ''" type="button" class="mt-2 text-xs font-bold text-red-500 hover:text-red-700">Cancel message</button>
+                                    </div>
                                 </div>
-                                <div class="mt-6 flex gap-3">
-                                    <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white rounded-xl py-3 font-black transition active:scale-95">Decline</button>
+                                <div class="flex gap-3">
+                                    <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white rounded-xl py-3 font-black transition active:scale-95 shadow-sm">Decline</button>
                                     <button type="button" @click="showDecline = false" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-900 rounded-xl py-3 font-bold transition">Cancel</button>
                                 </div>
                             </form>

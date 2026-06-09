@@ -32,7 +32,7 @@ class RentManagementController extends Controller
     public function show(RentRequest $rentRequest)
     {
         if ($rentRequest->space->owner_id !== Auth::id()) abort(403);
-        $rentRequest->load(['renter', 'space.location', 'status', 'pricing.pricingType', 'messages.reschedule']);
+        $rentRequest->load(['renter', 'space.location', 'status', 'pricing.pricingType', 'messages.sender', 'reschedules']);
         return view('owner.rents.show', compact('rentRequest'));
     }
 
@@ -67,7 +67,7 @@ class RentManagementController extends Controller
                     'request_id' => $rentRequest->id,
                     'sender_id'  => Auth::id(),
                     'type_id'    => Status::where('code', 'msg_approval_note')->value('id'),
-                    'message'    => $request->response_note ?? "approved",
+                    'message'    => $request->response_note,
                 ]);
             }
         });
@@ -80,21 +80,21 @@ class RentManagementController extends Controller
         DB::transaction(function () use ($rentRequest, $request) {
             $rentRequest->update(['status_id' => Status::where('code', 'rnt_req_rejected')->value('id')]);
             
-            RentMessage::create([
-                'request_id' => $rentRequest->id,
-                'sender_id'  => Auth::id(),
-                'type_id'    => Status::where('code', 'msg_decline_reason')->value('id'),
-                'message'    => $request->reject_reason ?? "rejected",
-            ]);
+            if ($request->filled('reject_reason')) {
+                RentMessage::create([
+                    'request_id' => $rentRequest->id,
+                    'sender_id'  => Auth::id(),
+                    'type_id'    => Status::where('code', 'msg_decline_reason')->value('id'),
+                    'message'    => $request->reject_reason,
+                ]);
+            }
         });
-
         return redirect()->route('owner.reservations.index')->with('success', 'Application rejected.');
     }
 
     public function reschedule(RescheduleRentRequest $request, RentRequest $rentRequest)
     {
         DB::transaction(function () use ($rentRequest, $request) {
-            // 1. Calculate Prorated Math
             $start = Carbon::parse($request->new_start_date);
             $end = Carbon::parse($request->new_end_date);
             $totalDays = $start->diffInDays($end) ?: 1;
@@ -106,7 +106,6 @@ class RentManagementController extends Controller
             elseif ($code === 'monthly') $totalPrice = ($basePrice / 30) * $totalDays;
             else $totalPrice = $basePrice * $totalDays;
 
-            // 2. Instantly Mutate the Request!
             $rentRequest->update([
                 'visit_date'  => $request->new_visit_date,
                 'start_date'  => $start->toDateString(),
@@ -114,22 +113,24 @@ class RentManagementController extends Controller
                 'total_price' => round($totalPrice),
             ]);
 
-            // 3. Log the Proposal
-            $message = RentMessage::create([
-                'request_id' => $rentRequest->id,
-                'sender_id'  => Auth::id(),
-                'type_id'    => Status::where('code', 'msg_reschedule_proposal')->value('id'),
-                'message'    => $request->response_note ?? "Reschedule",
-            ]);
+            // Always log the reschedule proposal event
+            if ($request->filled('response_note')) {
+                RentMessage::create([
+                    'request_id' => $rentRequest->id,
+                    'sender_id'  => Auth::id(),
+                    'type_id'    => Status::where('code', 'msg_reschedule_proposal')->value('id'),
+                    'message'    => $request->response_note,
+                ]);
+            }
 
             RentReschedule::create([
-                'rent_message_id'     => $message->id,
+                'rent_request_id'     => $rentRequest->id,
+                'sender_id'           => Auth::id(),
                 'proposed_visit_date' => $request->new_visit_date,
-                'proposed_start_date' => $request->new_start_date,
-                'proposed_end_date'   => $request->new_end_date,
+                'proposed_start_date' => $start->toDateString(),
+                'proposed_end_date'   => $end->toDateString(),
             ]);
         });
-
-        return redirect()->back()->with('success', 'New dates proposed! The contract has been temporarily updated pending renter approval.');
+        return redirect()->back()->with('success', 'Dates proposed!');
     }
 }

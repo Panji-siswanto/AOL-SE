@@ -19,13 +19,23 @@ use Carbon\Carbon;
 
 class RentRequestController extends Controller
 {
-      public function create(Request $request, Space $space)
+    public function index()
+    {
+        $requests = Auth::user()->rentRequests()
+            ->with(['space.location', 'status', 'messages.sender', 'reschedules'])
+            ->latest()
+            ->paginate(10);
+
+        return view('renter.rents.index', compact('requests'));
+    }
+
+    public function create(Request $request, Space $space)
     {
         if (!Auth::user()->is_verified) {
             return redirect()->route('verification.index')->with('error', 'You must verify your identity before renting a space.');
         }
 
-        if ($space->status_id !== Status::SPC_AVAILABLE) {
+        if ($space->status_id !== Status::where('code', 'spc_available')->value('id')) {
             return redirect()->back()->with('error', 'This space is not currently available for rent.');
         }
 
@@ -44,7 +54,7 @@ class RentRequestController extends Controller
         return view('renter.rents.create', compact('space', 'selectedPricing'));
     }
 
-   public function store(StoreRentRequest $request, Space $space)
+    public function store(StoreRentRequest $request, Space $space)
     {
         try {
             DB::beginTransaction();
@@ -57,13 +67,13 @@ class RentRequestController extends Controller
             
             $start = Carbon::parse($request->start_date);
             $end = clone $start;
-            $type = strtolower($pricing->pricingType->code);
+            $typeCode = strtolower($pricing->pricingType->code);
 
-            if ($type === 'daily') {
+            if ($typeCode === 'daily') {
                 $end->addDays($duration);
-            } elseif ($type === 'weekly') {
+            } elseif ($typeCode === 'weekly') {
                 $end->addWeeks($duration);
-            } elseif ($type === 'monthly') {
+            } elseif ($typeCode === 'monthly') {
                 $end->addMonths($duration);
             }
 
@@ -75,33 +85,25 @@ class RentRequestController extends Controller
                 'end_date'    => $end->toDateString(),
                 'visit_date'  => $request->visit_date,
                 'total_price' => $totalPrice,
-                'status_id'   => Status::RNT_REQ_PENDING,
+                'status_id'   => Status::where('code', 'rnt_req_pending')->value('id'),
             ]);
 
             if ($request->filled('note')) {
                 RentMessage::create([
                     'request_id' => $rentRequest->id,
                     'sender_id'  => Auth::id(),
-                    'context'    => Status::MSG_APPLICATION,
+                    'type_id'    => Status::where('code', 'msg_application')->value('id'),
                     'message'    => $request->note,
                 ]);
             }
-
+        
             DB::commit();
-            return redirect()->route('rents.index')->with('success', 'Your rental request has been successfully sent to the owner!');
+            return redirect()->route('rents.index')->with('success', 'Rent request submitted successfully!');
+
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->with('error', 'Failed to submit request: ' . $e->getMessage())->withInput();
         }
-    }
-    public function index()
-    {
-        $requests = Auth::user()->rentRequests()
-            ->with(['space.location', 'status', 'messages.sender', 'messages.reschedule'])
-            ->latest()
-            ->paginate(10);
-
-        return view('renter.rents.index', compact('requests'));
     }
 
     public function approve(Request $request, RentRequest $rentRequest)
@@ -132,12 +134,15 @@ class RentRequestController extends Controller
                 ]);
             }
 
-            RentMessage::create([
-                'request_id' => $rentRequest->id,
-                'sender_id'  => Auth::id(),
-                'type_id'    => Status::where('code', 'msg_approval_note')->value('id'),
-                'message'    => 'The renter has accepted the dates. The contract is now active!',
-            ]);
+            // Only create message if the renter explicitly left a note
+            if ($request->filled('response_note')) {
+                RentMessage::create([
+                    'request_id' => $rentRequest->id,
+                    'sender_id'  => Auth::id(),
+                    'type_id'    => Status::where('code', 'msg_approval_note')->value('id'),
+                    'message'    => $request->response_note,
+                ]);
+            }
         });
 
         return redirect()->back()->with('success', 'Application accepted! Contract created.');
@@ -150,12 +155,15 @@ class RentRequestController extends Controller
         DB::transaction(function () use ($rentRequest, $request) {
             $rentRequest->update(['status_id' => Status::where('code', 'rnt_req_cancelled')->value('id')]);
 
-            RentMessage::create([
-                'request_id' => $rentRequest->id,
-                'sender_id'  => Auth::id(),
-                'type_id'    => Status::where('code', 'msg_decline_reason')->value('id'),
-                'message'    => $request->reject_reason ?? 'The renter has cancelled this application.',
-            ]);
+            // Only create message if the renter explicitly left a reason
+            if ($request->filled('response_note')) {
+                RentMessage::create([
+                    'request_id' => $rentRequest->id,
+                    'sender_id'  => Auth::id(),
+                    'type_id'    => Status::where('code', 'msg_decline_reason')->value('id'),
+                    'message'    => $request->response_note,
+                ]);
+            }
         });
 
         return redirect()->back()->with('success', 'Application successfully cancelled.');
@@ -184,22 +192,26 @@ class RentRequestController extends Controller
                 'total_price' => round($totalPrice),
             ]);
 
-            $message = RentMessage::create([
-                'request_id' => $rentRequest->id,
-                'sender_id'  => Auth::id(),
-                'type_id'    => Status::where('code', 'msg_reschedule_proposal')->value('id'),
-                'message'    => $request->response_note ?? "reschedule",
-            ]);
+            // Only create message if the renter explicitly left a note
+            if ($request->filled('response_note')) {
+                RentMessage::create([
+                    'request_id' => $rentRequest->id,
+                    'sender_id'  => Auth::id(),
+                    'type_id'    => Status::where('code', 'msg_reschedule_proposal')->value('id'),
+                    'message'    => $request->response_note,
+                ]);
+            }
 
+            // Create independent Reschedule Log (Option B Schema!)
             RentReschedule::create([
-                'rent_message_id'     => $message->id,
+                'rent_request_id'     => $rentRequest->id,
+                'sender_id'           => Auth::id(),
                 'proposed_visit_date' => $request->new_visit_date,
-                'proposed_start_date' => $request->new_start_date,
-                'proposed_end_date'   => $request->new_end_date,
+                'proposed_start_date' => $start->toDateString(),
+                'proposed_end_date'   => $end->toDateString(),
             ]);
         });
 
         return redirect()->back()->with('success', 'Counter-proposal sent! The dates are temporarily updated pending owner approval.');
     }
-
 }
