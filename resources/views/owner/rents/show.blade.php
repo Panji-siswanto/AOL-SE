@@ -9,25 +9,43 @@
             $rejectedId = \App\Models\Status::where('code', 'rnt_req_rejected')->value('id');
             $cancelledId = \App\Models\Status::where('code', 'rnt_req_cancelled')->value('id');
 
-            // --- UNIFIED TIMELINE LOGIC ---
-            $timeline = collect();
-            foreach($rentRequest->messages as $msg) {
-                $timeline->push((object)['type' => 'message', 'model' => $msg, 'time' => $msg->created_at, 'sender_id' => $msg->sender_id]);
-            }
-            foreach($rentRequest->reschedules as $resc) {
-                $timeline->push((object)['type' => 'reschedule', 'model' => $resc, 'time' => $resc->created_at, 'sender_id' => $resc->sender_id]);
-            }
-            
-            $latestInteraction = $timeline->sortByDesc('time')->first();
-            
-            // Turn logic
-            $isMyTurn = $rentRequest->status_id == $pendingId && $latestInteraction && $latestInteraction->sender_id !== Auth::id();
-            $waitingForRenter = $rentRequest->status_id == $pendingId && $latestInteraction && $latestInteraction->sender_id === Auth::id();
+            $latestSenderId = $rentRequest->renter_id;
+            $isPendingReschedule = false;
 
             $latestReschedule = $rentRequest->reschedules->sortByDesc('created_at')->first();
-            $latestMessage = $rentRequest->messages->where('sender_id', '!=', Auth::id())->sortByDesc('created_at')->first();
+            $latestMessageAll = $rentRequest->messages->sortByDesc('created_at')->first();
+
+            if ($latestReschedule && $latestMessageAll) {
+                if ($latestReschedule->created_at->gte($latestMessageAll->created_at)) {
+                    $latestSenderId = $latestReschedule->sender_id;
+                    $isPendingReschedule = true;
+                } else {
+                    $latestSenderId = $latestMessageAll->sender_id;
+                }
+            } elseif ($latestReschedule) {
+                $latestSenderId = $latestReschedule->sender_id;
+                $isPendingReschedule = true;
+            } elseif ($latestMessageAll) {
+                $latestSenderId = $latestMessageAll->sender_id;
+            }
+
+            $isMyTurn = $rentRequest->status_id == $pendingId && $latestSenderId !== Auth::id();
+            $waitingForRenter = $rentRequest->status_id == $pendingId && $latestSenderId === Auth::id();
+
+            $rates = \App\Models\SpaceRegistrationPrice::where('space_registration_id', $rentRequest->space->registration_id)
+                ->join('pricing_types', 'space_registration_prices.pricing_type_id', '=', 'pricing_types.id')
+                ->pluck('space_registration_prices.price', 'pricing_types.code')
+                ->mapWithKeys(fn($item, $key) => [strtolower($key) => $item]);
+
+            $dailyRate = $rates['daily'] ?? 'null';
+            $weeklyRate = $rates['weekly'] ?? 'null';
+            $monthlyRate = $rates['monthly'] ?? 'null';
+
+            $msgApproveId = \App\Models\Status::where('code', 'msg_approval_note')->value('id');
+            $msgDeclineId = \App\Models\Status::where('code', 'msg_decline_reason')->value('id');
             
-            $isPendingReschedule = $latestInteraction && $latestInteraction->type === 'reschedule';
+            $displayPrice = $isPendingReschedule ? $latestReschedule->proposed_total_price : $rentRequest->total_price;
+            $displayBreakdown = $isPendingReschedule ? $latestReschedule->price_breakdown : $rentRequest->price_breakdown;
         @endphp
 
         <div class="mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
@@ -66,18 +84,33 @@
                     </div>
                 </div>
 
-                {{-- Clean Message Box --}}
-                @if($latestMessage)
+                @if($rentRequest->status_id == $acceptedId && $approvalMsg = $rentRequest->messages->where('type_id', $msgApproveId)->first())
                     <div class="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm">
-                        <h3 class="text-xl font-black text-gray-900 mb-6 flex items-center gap-2"><span>💬</span> Latest Message</h3>
-                        <div class="bg-gray-50 p-6 rounded-2xl border border-gray-200">
-                            <div class="flex justify-between items-center mb-3">
-                                <span class="text-[10px] font-black uppercase tracking-wider text-blue-600">From: Renter</span>
-                                <span class="text-[10px] text-gray-400">{{ \Carbon\Carbon::parse($latestMessage->created_at)->diffForHumans() }}</span>
-                            </div>
-                            <p class="text-gray-700 font-medium leading-relaxed whitespace-pre-line">{{ $latestMessage->message }}</p>
+                        <h3 class="text-xl font-black text-gray-900 mb-6 flex items-center gap-2"><span>💬</span> Note from You</h3>
+                        <div class="bg-teal-50 p-6 rounded-2xl border border-teal-100">
+                            <p class="text-teal-900 font-medium leading-relaxed whitespace-pre-line">{{ $approvalMsg->message }}</p>
                         </div>
                     </div>
+                @elseif(in_array($rentRequest->status_id, [$rejectedId, $cancelledId]) && $declineMsg = $rentRequest->messages->where('type_id', $msgDeclineId)->sortByDesc('created_at')->first())
+                    <div class="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm">
+                        <h3 class="text-xl font-black text-gray-900 mb-6 flex items-center gap-2"><span>💬</span> Decline Reason</h3>
+                        <div class="bg-red-50 p-6 rounded-2xl border border-red-100">
+                            <p class="text-red-900 font-medium leading-relaxed whitespace-pre-line">{{ $declineMsg->message }}</p>
+                        </div>
+                    </div>
+                @elseif($rentRequest->status_id == $pendingId && !($isMyTurn && $isPendingReschedule))
+                    @php $latestContextMsg = $rentRequest->messages->where('sender_id', $rentRequest->renter_id)->whereNotIn('type_id', [$msgApproveId, $msgDeclineId])->sortByDesc('created_at')->first(); @endphp
+                    @if($latestContextMsg)
+                        <div class="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm">
+                            <h3 class="text-xl font-black text-gray-900 mb-6 flex items-center gap-2"><span>💬</span> Note from Renter</h3>
+                            <div class="bg-gray-50 p-6 rounded-2xl border border-gray-200">
+                                <div class="flex justify-between items-center mb-3">
+                                    <span class="text-[10px] text-gray-400">{{ \Carbon\Carbon::parse($latestContextMsg->created_at)->diffForHumans() }}</span>
+                                </div>
+                                <p class="text-gray-700 font-medium leading-relaxed whitespace-pre-line">{{ $latestContextMsg->message }}</p>
+                            </div>
+                        </div>
+                    @endif
                 @endif
 
                 <div class="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm">
@@ -109,18 +142,37 @@
             <div class="lg:col-span-1 sticky top-28 space-y-6">
                 <div class="bg-white p-6 sm:p-8 rounded-[2rem] border border-gray-200 shadow-xl shadow-gray-100/50">
                     <h3 class="text-sm font-black uppercase tracking-wider text-gray-400 mb-6 border-b border-gray-100 pb-4">Financial Summary</h3>
+                    
+                    {{-- 🔥 FIXED: Removed Old Pricing relation, replaced with available rates --}}
                     <div class="space-y-4 mb-8">
-                        <div class="flex justify-between items-center">
-                            <span class="text-sm font-bold text-gray-500">Agreed Rate ({{ $rentRequest->pricing->pricingType->name }})</span>
-                            <span class="text-sm font-black text-gray-900">Rp {{ number_format($rentRequest->pricing->price, 0, ',', '.') }}</span>
+                        <div class="flex justify-between items-center border-b border-gray-100 pb-4 mb-4">
+                            <span class="text-[10px] font-black uppercase tracking-wider text-gray-400">Configured Rates</span>
+                            <div class="text-right text-[10px] font-bold text-gray-500">
+                                @if($dailyRate !== 'null') <span>Daily: Rp {{ number_format($dailyRate, 0, ',', '.') }}</span><br> @endif
+                                @if($weeklyRate !== 'null') <span>Weekly: Rp {{ number_format($weeklyRate, 0, ',', '.') }}</span><br> @endif
+                                @if($monthlyRate !== 'null') <span>Monthly: Rp {{ number_format($monthlyRate, 0, ',', '.') }}</span> @endif
+                            </div>
                         </div>
-                        <div class="flex justify-between items-center pt-4 border-t border-gray-200">
-                            <span class="text-lg font-black text-gray-900">Total Revenue</span>
-                            <span class="text-2xl font-black text-teal-600">Rp {{ number_format($rentRequest->total_price, 0, ',', '.') }}</span>
+
+                        <div class="flex justify-between items-end pt-2">
+                            <span class="text-lg font-black text-gray-900 mb-1">Total Revenue</span>
+                            <div class="text-right">
+                                <span class="text-2xl font-black text-teal-600 block">Rp {{ number_format($displayPrice, 0, ',', '.') }}</span>
+                                
+                                {{-- JSON SNAPSHOT BREAKDOWN IN UI! --}}
+                                @if($displayBreakdown && is_array($displayBreakdown))
+                                    <div class="text-[9px] text-gray-500 mt-1 leading-tight">
+                                        @if(isset($displayBreakdown['monthly'])) <div>{{ $displayBreakdown['monthly']['qty'] }} Month(s)</div> @endif
+                                        @if(isset($displayBreakdown['weekly'])) <div>{{ $displayBreakdown['weekly']['qty'] }} Week(s)</div> @endif
+                                        @if(isset($displayBreakdown['daily'])) <div>{{ $displayBreakdown['daily']['qty'] }} Day(s)</div> @endif
+                                        @if(isset($displayBreakdown['prorated_days'])) <div>{{ $displayBreakdown['prorated_days']['qty'] }} Prorated Day(s)</div> @endif
+                                    </div>
+                                @endif
+                            </div>
                         </div>
                     </div>
 
-                    @if($isMyTurn)
+                    @if($isMyTurn && !$isPendingReschedule)
                         <div class="space-y-3 pt-6 border-t border-gray-100">
                             <button @click.prevent="$dispatch('open-approve-modal')" class="w-full bg-teal-600 hover:bg-teal-700 text-white py-3.5 rounded-2xl font-black transition-all active:scale-95 shadow-lg shadow-teal-600/30">Accept Application</button>
                             <button @click.prevent="$dispatch('open-reschedule-modal')" class="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 py-3.5 rounded-2xl font-black transition-all active:scale-95 shadow-sm">Propose New Dates</button>
@@ -142,8 +194,13 @@
                     <div class="bg-blue-50 border border-blue-200 rounded-[2rem] p-6 shadow-sm">
                         <h4 class="font-black text-blue-900 mb-2 uppercase text-xs tracking-wider flex items-center gap-2"><span class="text-base">🔔</span> Renter Counter-Proposal</h4>
                         
-                        @if($latestMessage && $latestMessage->created_at->diffInMinutes($latestReschedule->created_at) < 5)
-                            <p class="text-sm font-medium text-blue-800 mb-4 whitespace-pre-line">{{ $latestMessage->message }}</p>
+                        @php $rescheduleMsg = $rentRequest->messages->where('sender_id', $rentRequest->renter_id)->where('created_at', '>=', $latestReschedule->created_at->subMinutes(2))->first(); @endphp
+                        
+                        @if($rescheduleMsg)
+                            <div class="mb-4">
+                                <span class="text-[10px] font-black uppercase tracking-wider text-blue-500 block mb-1">Note from Renter:</span>
+                                <p class="text-sm font-medium text-blue-800 whitespace-pre-line">{{ $rescheduleMsg->message }}</p>
+                            </div>
                         @else
                             <p class="text-sm font-medium text-blue-800/60 italic mb-4">Dates proposed without additional comments.</p>
                         @endif
@@ -154,9 +211,16 @@
                             <div class="bg-white/60 border border-blue-100 p-2 rounded-xl text-center">End<br>{{ \Carbon\Carbon::parse($latestReschedule->proposed_end_date)->format('M d') }}</div>
                         </div>
 
-                        <div class="flex gap-2">
-                            <button @click.prevent="$dispatch('open-approve-modal')" class="w-full bg-blue-600 text-white rounded-xl py-2.5 font-black text-sm hover:bg-blue-700 transition active:scale-95 shadow-sm">Accept Dates</button>
-                            <button @click.prevent="$dispatch('open-decline-modal')" class="w-full bg-white text-red-600 border border-red-200 rounded-xl py-2.5 font-black text-sm hover:bg-red-50 transition active:scale-95">Decline</button>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <button @click.prevent="$dispatch('open-approve-modal')" class="w-full bg-blue-600 text-white rounded-xl py-2.5 font-black text-sm hover:bg-blue-700 transition active:scale-95 shadow-sm">
+                                Accept Dates
+                            </button>
+                            <button @click.prevent="$dispatch('open-reschedule-modal')" class="w-full bg-white text-blue-700 border border-blue-200 rounded-xl py-2.5 font-black text-sm hover:bg-blue-50 transition active:scale-95 shadow-sm">
+                                Propose New
+                            </button>
+                            <button @click.prevent="$dispatch('open-decline-modal')" class="w-full bg-white text-red-600 border border-red-200 rounded-xl py-2.5 font-black text-sm hover:bg-red-50 transition active:scale-95">
+                                Decline
+                            </button>
                         </div>
                     </div>
                 @endif
@@ -201,25 +265,58 @@
             <div x-data="{ 
                     showReschedule: false, showNote: false,
                     startDate: '{{ $rentRequest->start_date }}', endDate: '{{ $rentRequest->end_date }}', visitDate: '{{ $rentRequest->visit_date }}',
-                    pricingCode: '{{ strtolower($rentRequest->pricing->pricingType->code) }}', pricePerUnit: {{ $rentRequest->pricing->price }},
+                    
+                    dailyRate: {{ $dailyRate }},
+                    weeklyRate: {{ $weeklyRate }},
+                    monthlyRate: {{ $monthlyRate }},
+
                     get durationText() {
                         if(!this.startDate || !this.endDate) return '0 Days';
                         let s = new Date(this.startDate); let e = new Date(this.endDate);
                         let diffTime = e - s; if (diffTime <= 0) return '0 Days';
+                        
                         let totalDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-                        if(this.pricingCode === 'daily') return totalDays + ' Day(s)';
-                        if(this.pricingCode === 'weekly') { let w = Math.floor(totalDays / 7); let d = totalDays % 7; let text = []; if (w > 0) text.push(w + ' Week(s)'); if (d > 0) text.push(d + ' Day(s)'); return text.join(', '); }
-                        if(this.pricingCode === 'monthly') { let m = Math.floor(totalDays / 30); let remDays = totalDays % 30; let w = Math.floor(remDays / 7); let d = remDays % 7; let text = []; if (m > 0) text.push(m + ' Month(s)'); if (w > 0) text.push(w + ' Week(s)'); if (d > 0) text.push(d + ' Day(s)'); return text.join(', '); }
-                        return '0 Days';
+                        
+                        let m = Math.floor(totalDays / 30); 
+                        let remDays = totalDays % 30; 
+                        let w = Math.floor(remDays / 7); 
+                        let d = remDays % 7; 
+                        
+                        let text = []; 
+                        if (m > 0) text.push(m + ' Month(s)'); 
+                        if (w > 0) text.push(w + ' Week(s)'); 
+                        if (d > 0) text.push(d + ' Day(s)'); 
+                        
+                        return text.length > 0 ? text.join(', ') : '0 Days';
                     },
                     get total() {
                         if(!this.startDate || !this.endDate) return 0;
                         let s = new Date(this.startDate); let e = new Date(this.endDate);
                         let diffTime = e - s; if (diffTime <= 0) return 0;
                         let totalDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-                        if(this.pricingCode === 'weekly') return Math.round((this.pricePerUnit / 7) * totalDays);
-                        if(this.pricingCode === 'monthly') return Math.round((this.pricePerUnit / 30) * totalDays);
-                        return totalDays * this.pricePerUnit;
+                        
+                        let price = 0;
+                        let rem = totalDays;
+
+                        if (this.monthlyRate !== null) {
+                            let m = Math.floor(rem / 30);
+                            price += m * this.monthlyRate;
+                            rem %= 30;
+                        }
+                        if (this.weeklyRate !== null) {
+                            let w = Math.floor(rem / 7);
+                            price += w * this.weeklyRate;
+                            rem %= 7;
+                        }
+                        if (this.dailyRate !== null && rem > 0) {
+                            price += rem * this.dailyRate;
+                            rem = 0;
+                        } 
+                        if (rem > 0) {
+                            let smallestRate = this.dailyRate !== null ? this.dailyRate : (this.weeklyRate !== null ? this.weeklyRate / 7 : (this.monthlyRate !== null ? this.monthlyRate / 30 : 0));
+                            price += rem * smallestRate;
+                        }
+                        return Math.round(price);
                     }
                 }" 
                 @open-reschedule-modal.window="showReschedule = true" @keydown.escape.window="showReschedule = false" class="relative z-50" x-cloak>
@@ -230,8 +327,8 @@
                             <h3 class="text-xl font-black text-gray-900 mb-2">Propose Alternative Dates</h3>
                             
                             <div class="bg-blue-50/50 p-4 rounded-xl mb-4 border border-blue-100 flex justify-between items-center mt-4">
-                                <div><p class="text-[10px] uppercase font-black text-blue-400">Total Duration</p><p class="text-sm font-black text-blue-900" x-text="durationText"></p></div>
-                                <div class="text-right"><p class="text-[10px] uppercase font-black text-blue-400">Prorated Total Price</p><p class="text-lg font-black text-teal-600" x-text="'Rp ' + new Intl.NumberFormat('id-ID').format(total)"></p></div>
+                                <div><p class="text-[10px] uppercase font-black text-blue-400">Calculated Duration</p><p class="text-sm font-black text-blue-900" x-text="durationText"></p></div>
+                                <div class="text-right"><p class="text-[10px] uppercase font-black text-blue-400">New Total Price</p><p class="text-lg font-black text-teal-600" x-text="'Rp ' + new Intl.NumberFormat('id-ID').format(total)"></p></div>
                             </div>
 
                             <form action="{{ route('owner.reservations.reschedule', $rentRequest->id) }}" method="POST">
@@ -256,7 +353,7 @@
                                     </button>
                                     <div x-show="showNote" x-transition style="display: none;">
                                         <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Your Message</label>
-                                        <textarea x-ref="noteInput" name="response_note" rows="3" class="w-full rounded-2xl border-gray-300 focus:border-blue-500 shadow-sm font-medium text-sm text-gray-700 resize-none"></textarea>
+                                        <textarea x-ref="noteInput" name="response_note" rows="3" placeholder="Explain the change..." class="w-full rounded-2xl border-gray-300 focus:border-blue-500 shadow-sm font-medium text-sm text-gray-700 resize-none"></textarea>
                                         <button @click="showNote = false; $refs.noteInput.value = ''" type="button" class="mt-2 text-xs font-bold text-red-500 hover:text-red-700">Cancel message</button>
                                     </div>
                                 </div>

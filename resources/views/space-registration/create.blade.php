@@ -197,7 +197,6 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             
-            // Utility handler for primary File feedback blocks
             function bindDocInput(inputId, placeholderId, containerId) {
                 const input = document.getElementById(inputId);
                 const placeholder = document.getElementById(placeholderId);
@@ -220,15 +219,15 @@
             bindDocInput('tanah-input', 'tanah-placeholder', 'tanah-preview-container');
             bindDocInput('izin-input', 'izin-placeholder', 'izin-preview-container');
 
-            // Interactive HTML Gallery Injection
+          
             const galleryInput = document.getElementById('gallery-input');
             const galleryGrid = document.getElementById('gallery-preview-grid');
 
             if (galleryInput && galleryGrid) {
                 galleryInput.addEventListener('change', function() {
-                    galleryGrid.innerHTML = ''; // Wipe stale buffered previews
+                    galleryGrid.innerHTML = ''; 
                     
-                    const files = Array.from(this.files).slice(0, 4); // Keep array clean
+                    const files = Array.from(this.files).slice(0, 4);
                     
                     files.forEach((file, index) => {
                         const reader = new FileReader();
@@ -252,7 +251,6 @@
                 });
             }
 
-            // Safe Gateway Logic blocking form submission cascades
             const form = document.getElementById('space-form');
             const submitBtn = document.getElementById('submit-button');
 

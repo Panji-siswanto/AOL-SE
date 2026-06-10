@@ -59,9 +59,7 @@ class RolePermissionSeeder extends Seeder
         $owner = Role::firstOrCreate(['name' => 'owner']);
         $renter = Role::firstOrCreate(['name' => 'renter']);
 
-        // ==========================================
-        // ROLE-BASED ASSIGNMENTS
-        // ==========================================
+  
 
         // ADMIN → Full platform access
         $admin->givePermissionTo(Permission::all());
@@ -80,14 +78,14 @@ class RolePermissionSeeder extends Seeder
         // RENTER (Base State) → Strictly limited to space discovery and dashboard monitoring
         // Sensitive writing actions are removed from this default group.
         $renter->givePermissionTo([
-             'submit space registration',   
+            'submit space registration',   
             'view spaces',
             'view space detail',
             'bookmark space',
             'remove bookmark',
             'view bookmarks',
-            'view own space registrations', // Allows viewing their pending application status
-            'view own rent requests',       // Allows tracking historical applications
+            'view own space registrations', 
+            'view own rent requests',       
             'view rents',
         ]);
     }

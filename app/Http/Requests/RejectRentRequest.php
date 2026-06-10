@@ -14,7 +14,7 @@ class RejectRentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'reject_reason' => ['required', 'string', 'max:1000'],
+            'reject_reason' => ['nullable', 'string', 'max:1000'],
         ];
     }
 }

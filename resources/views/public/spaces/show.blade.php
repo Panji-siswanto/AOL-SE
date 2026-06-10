@@ -143,6 +143,19 @@
                         </div>
                     </div>
 
+                    {{-- READ-ONLY PRICING DISPLAY --}}
+                    <div class="mb-6">
+                        <span class="text-[10px] font-black uppercase tracking-wider text-gray-400 block mb-3">All Configured Rates</span>
+                        <div class="space-y-2">
+                            @foreach($space->registration->prices as $price)
+                                <div class="flex justify-between items-center p-3.5 bg-gray-50 rounded-xl border border-gray-100">
+                                    <span class="text-sm font-bold text-gray-700">{{ $price->pricingType->name }}</span>
+                                    <span class="text-sm font-black text-gray-900">Rp {{ number_format($price->price, 0, ',', '.') }}</span>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+
                     @if(!auth()->check())
                         <div class="bg-gray-50 border border-gray-100 p-6 rounded-2xl text-center mt-6">
                             <span class="text-3xl mb-3 block">🔒</span>
@@ -157,7 +170,7 @@
                             <span class="text-3xl mb-3 block">🛡️</span>
                             <h4 class="font-black text-gray-900 mb-1">Verification Required</h4>
                             <p class="text-sm font-medium text-gray-600 mb-4">To ensure community safety, you must verify your identity before renting a space.</p>
-                            <a href="{{ route('verification.index') }}" class="w-full block bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-xl font-bold transition-all shadow-sm">
+                            <a href="{{ route('verification.index') }}" class="w-full block bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-xl font-bold transition-all shadow-sm text-center">
                                 Verify Identity Now
                             </a>
                         </div>
@@ -166,7 +179,7 @@
                             <span class="text-3xl mb-3 block">🏠</span>
                             <h4 class="font-black text-gray-900 mb-1">Your Listing</h4>
                             <p class="text-sm font-medium text-gray-600 mb-4">You are the host of this space. You cannot request to rent it.</p>
-                            <a href="{{ route('owner.spaces.show', $space->id) }}" class="w-full block bg-gray-900 hover:bg-black text-white py-3 rounded-xl font-bold transition-all shadow-sm">
+                            <a href="{{ route('owner.spaces.show', $space->id) }}" class="w-full block bg-gray-900 hover:bg-black text-white py-3 rounded-xl font-bold transition-all shadow-sm text-center">
                                 Manage Space
                             </a>
                         </div>
@@ -175,35 +188,17 @@
                             <span class="text-3xl mb-3 block">⏳</span>
                             <h4 class="font-black text-gray-900 mb-1">Request Pending</h4>
                             <p class="text-sm font-medium text-gray-600 mb-4">You already have an active application for this space. Please wait for the host to review it.</p>
-                            <a href="{{ route('rents.index') }}" class="w-full block bg-teal-600 hover:bg-teal-700 text-white py-3 rounded-xl font-bold transition-all shadow-sm">
+                            <a href="{{ route('rents.index') }}" class="w-full block bg-teal-600 hover:bg-teal-700 text-white py-3 rounded-xl font-bold transition-all shadow-sm text-center">
                                 Track My Request
                             </a>
                         </div>
                     @else
-                        <form action="{{ route('rents.create', $space->id) }}" method="GET" class="space-y-6">
-                            
-                            <div>
-                                <label class="text-[10px] font-black uppercase tracking-wider text-gray-400 block mb-3">Available Rental Packages</label>
-                                <div class="space-y-3">
-                                    @foreach($space->registration->prices as $price)
-                                        <label class="flex justify-between items-center p-4 bg-gray-50 hover:bg-teal-50 rounded-xl border border-gray-200 hover:border-teal-300 cursor-pointer transition has-[:checked]:bg-teal-50 has-[:checked]:border-teal-500 has-[:checked]:ring-1 has-[:checked]:ring-teal-500">
-                                            <div class="flex items-center gap-3">
-                                                <input type="radio" name="pricing_id" value="{{ $price->id }}" class="w-4 h-4 text-teal-600 focus:ring-teal-500 border-gray-300" required>
-                                                <span class="text-sm font-bold text-gray-700">{{ $price->pricingType->name }}</span>
-                                            </div>
-                                            <span class="text-sm font-black text-gray-900">Rp {{ number_format($price->price, 0, ',', '.') }}</span>
-                                        </label>
-                                    @endforeach
-                                </div>
-                            </div>
-
-                            <div class="pt-4 border-t border-gray-100">
-                                <button type="submit" class="w-full bg-orange-500 hover:bg-orange-600 text-white text-center py-4 rounded-2xl font-black transition-all active:scale-95 shadow-lg shadow-orange-500/30">
-                                    Request to Rent
-                                </button>
-                                <p class="text-[10px] text-center text-gray-400 font-bold mt-4 uppercase tracking-wider">You won't be charged yet</p>
-                            </div>
-                        </form>
+                        <div class="pt-4 border-t border-gray-100">
+                            <a href="{{ route('rents.create', $space->id) }}" class="block w-full bg-orange-500 hover:bg-orange-600 text-white text-center py-4 rounded-2xl font-black transition-all active:scale-95 shadow-lg shadow-orange-500/30">
+                                Request to Rent
+                            </a>
+                            <p class="text-[10px] text-center text-gray-400 font-bold mt-4 uppercase tracking-wider">You won't be charged yet</p>
+                        </div>
                     @endif
 
                 </div>

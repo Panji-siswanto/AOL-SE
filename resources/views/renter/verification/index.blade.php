@@ -139,7 +139,6 @@
             setupPreview('ktp-input', 'ktp-preview', 'ktp-placeholder');
             setupPreview('selfie-input', 'selfie-preview', 'selfie-placeholder');
 
-            // Form Submit Listener to completely block double-click/spam issues
             const form = document.getElementById('verification-form');
             const submitBtn = document.getElementById('submit-btn');
 

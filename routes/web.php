@@ -34,9 +34,12 @@ Route::middleware(['auth', 'verified'])->prefix('rents')->name('rents.')->group(
     Route::post('/{rentRequest}/reject', [RentRequestController::class, 'reject'])->name('reject');
     Route::post('/{rentRequest}/reschedule', [RentRequestController::class, 'reschedule'])->name('reschedule');
     Route::post('/{rentRequest}/cancel', [RentRequestController::class, 'cancel'])->name('cancel');
+
+    // Early Finish actions
+    Route::post('/{rentRequest}/finish/request', [RentRequestController::class, 'requestFinish'])->name('finish.request');
+    Route::post('/{rentRequest}/finish/approve', [RentRequestController::class, 'approveFinish'])->name('finish.approve');
+    Route::post('/{rentRequest}/finish/reject', [RentRequestController::class, 'rejectFinish'])->name('finish.reject');
 });
-
-
 
 // Accounts
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -55,10 +58,14 @@ Route::middleware(['auth', 'verified'])->prefix('owner')->name('owner.')->group(
     
     // Rent Management
     Route::get('reservations', [RentManagementController::class, 'index'])->name('reservations.index');
-    Route::get('reservations/{rentRequest}', [RentManagementController::class, 'show'])->name('reservations.show');
-   Route::post('reservations/{rentRequest}/approve', [RentManagementController::class, 'approve'])->name('reservations.approve');
+    Route::post('reservations/{rentRequest}/approve', [RentManagementController::class, 'approve'])->name('reservations.approve');
     Route::post('reservations/{rentRequest}/reject', [RentManagementController::class, 'reject'])->name('reservations.reject');
     Route::post('reservations/{rentRequest}/reschedule', [RentManagementController::class, 'reschedule'])->name('reservations.reschedule');
+    
+    // Early Finish actions
+    Route::post('reservations/{rentRequest}/finish/request', [RentManagementController::class, 'requestFinish'])->name('reservations.finish.request');
+    Route::post('reservations/{rentRequest}/finish/approve', [RentManagementController::class, 'approveFinish'])->name('reservations.finish.approve');
+    Route::post('reservations/{rentRequest}/finish/reject', [RentManagementController::class, 'rejectFinish'])->name('reservations.finish.reject');
     
     Route::prefix('spaces/registrations')->name('spaces.registrations.')->group(function () {
         Route::get('/create', [SpaceRegistrationController::class, 'create'])->name('create');
@@ -72,14 +79,12 @@ Route::middleware(['auth', 'verified'])->prefix('owner')->name('owner.')->group(
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-    // Verifications
     Route::get('/user-verifications', [UserVerificationRequestController::class, 'index'])->name('user-verifications.index');
     Route::get('/user-verifications/history', [UserVerificationRequestController::class, 'history'])->name('user-verifications.history');
     Route::get('/user-verifications/{verificationLog}', [UserVerificationRequestController::class, 'show'])->name('user-verifications.show');
     Route::post('/user-verifications/{verificationLog}/approve', [UserVerificationRequestController::class, 'approve'])->name('user-verifications.approve');
     Route::post('/user-verifications/{verificationLog}/reject', [UserVerificationRequestController::class, 'reject'])->name('user-verifications.reject');
 
-    // Listing Requests
     Route::get('/listing-requests', [ListingRequestController::class, 'index'])->name('listing-requests.index');
     Route::get('/listing-requests/history', [ListingRequestController::class, 'history'])->name('listing-requests.history');
     Route::get('/listing-requests/{registration}', [ListingRequestController::class, 'show'])->name('listing-requests.show');

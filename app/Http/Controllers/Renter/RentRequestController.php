@@ -19,39 +19,44 @@ use Carbon\Carbon;
 
 class RentRequestController extends Controller
 {
-    public function index()
+    public function index(Request $request) 
     {
-        $requests = Auth::user()->rentRequests()
-            ->with(['space.location', 'status', 'messages.sender', 'reschedules'])
-            ->latest()
-            ->paginate(10);
+        $query = Auth::user()->rentRequests()
+            ->with(['space.location', 'space.registration', 'status', 'messages.sender', 'reschedules']);
+
+        if ($request->filled('search')) {
+            $query->search($request->search);
+        }
+
+        $statusCode = $request->input('status', 'all');
+        if ($statusCode !== 'all') {
+            $query->withStatus($statusCode);
+        }
+
+        $sort = $request->input('sort', 'latest');
+        if ($sort === 'oldest') {
+            $query->oldest();
+        } elseif ($sort === 'price_high') {
+            $query->orderBy('total_price', 'desc');
+        } elseif ($sort === 'price_low') {
+            $query->orderBy('total_price', 'asc');
+        } else {
+            $query->latest(); 
+        }
+
+        $requests = $query->paginate(10)->withQueryString();
 
         return view('renter.rents.index', compact('requests'));
     }
 
     public function create(Request $request, Space $space)
     {
-        if (!Auth::user()->is_verified) {
-            return redirect()->route('verification.index')->with('error', 'You must verify your identity before renting a space.');
-        }
+        if (!Auth::user()->is_verified) return redirect()->route('verification.index')->with('error', 'You must verify your identity before renting a space.');
+        if ($space->status_id !== Status::where('code', 'spc_available')->value('id')) return redirect()->back()->with('error', 'This space is not currently available for rent.');
+        if ($space->owner_id === Auth::id()) return redirect()->back()->with('error', 'You cannot rent your own space.');
+        if ($space->has_active_request) return redirect()->route('rents.index')->with('error', 'You already have an active or pending request for this space.');
 
-        if ($space->status_id !== Status::where('code', 'spc_available')->value('id')) {
-            return redirect()->back()->with('error', 'This space is not currently available for rent.');
-        }
-
-        if ($space->owner_id === Auth::id()) {
-            return redirect()->back()->with('error', 'You cannot rent your own space.');
-        }
-
-        if ($space->has_active_request) {
-            return redirect()->route('rents.index')->with('error', 'You already have an active or pending request for this space.');
-        }
-
-        $selectedPricing = $space->registration->prices()->with('pricingType')->find($request->pricing_id);
-        
-        if (!$selectedPricing) return redirect()->route('spaces.show', $space->id)->with('error', 'Please select a valid rental package first.');
-
-        return view('renter.rents.create', compact('space', 'selectedPricing'));
+        return view('renter.rents.create', compact('space')); 
     }
 
     public function store(StoreRentRequest $request, Space $space)
@@ -59,33 +64,65 @@ class RentRequestController extends Controller
         try {
             DB::beginTransaction();
 
-            $duration = (int) $request->duration;
-
-            $pricing = SpaceRegistrationPrice::with('pricingType')->findOrFail($request->pricing_id);
-            
-            $totalPrice = $pricing->price * $duration; 
-            
+            $totalDays = (int) $request->duration; 
             $start = Carbon::parse($request->start_date);
             $end = clone $start;
-            $typeCode = strtolower($pricing->pricingType->code);
+            $end->addDays($totalDays);
 
-            if ($typeCode === 'daily') {
-                $end->addDays($duration);
-            } elseif ($typeCode === 'weekly') {
-                $end->addWeeks($duration);
-            } elseif ($typeCode === 'monthly') {
-                $end->addMonths($duration);
+            $rates = SpaceRegistrationPrice::where('space_registration_id', $space->registration_id)
+                ->join('pricing_types', 'space_registration_prices.pricing_type_id', '=', 'pricing_types.id')
+                ->pluck('space_registration_prices.price', 'pricing_types.code')
+                ->mapWithKeys(fn($item, $key) => [strtolower($key) => $item]);
+
+            $rem = $totalDays;
+            $totalPrice = 0;
+            $breakdown = [];
+
+            if (isset($rates['monthly'])) {
+                $m = floor($rem / 30);
+                if ($m > 0) {
+                    $sub = $m * $rates['monthly'];
+                    $totalPrice += $sub;
+                    $rem %= 30;
+                    $breakdown['monthly'] = ['qty' => $m, 'unit_price' => $rates['monthly'], 'subtotal' => $sub];
+                }
+            }
+            if (isset($rates['weekly'])) {
+                $w = floor($rem / 7);
+                if ($w > 0) {
+                    $sub = $w * $rates['weekly'];
+                    $totalPrice += $sub;
+                    $rem %= 7;
+                    $breakdown['weekly'] = ['qty' => $w, 'unit_price' => $rates['weekly'], 'subtotal' => $sub];
+                }
+            }
+            if (isset($rates['daily']) && $rem > 0) {
+                $sub = $rem * $rates['daily'];
+                $totalPrice += $sub;
+                $breakdown['daily'] = ['qty' => $rem, 'unit_price' => $rates['daily'], 'subtotal' => $sub];
+                $rem = 0;
+            } 
+            
+            if ($rem > 0) {
+                $smallestRate = $rates['daily'] ?? ($rates['weekly'] ? $rates['weekly'] / 7 : ($rates['monthly'] ? $rates['monthly'] / 30 : 0));
+                if ($smallestRate > 0) {
+                    $sub = $rem * $smallestRate;
+                    $totalPrice += $sub;
+                    $breakdown['prorated_days'] = ['qty' => $rem, 'unit_price' => round($smallestRate), 'subtotal' => round($sub)];
+                }
             }
 
+            $breakdown['summary'] = ['total_days' => $totalDays, 'final_price' => round($totalPrice)];
+
             $rentRequest = RentRequest::create([
-                'renter_id'   => Auth::id(),
-                'space_id'    => $space->id,
-                'pricing_id'  => $pricing->id,
-                'start_date'  => $start->toDateString(),
-                'end_date'    => $end->toDateString(),
-                'visit_date'  => $request->visit_date,
-                'total_price' => $totalPrice,
-                'status_id'   => Status::where('code', 'rnt_req_pending')->value('id'),
+                'renter_id'       => Auth::id(),
+                'space_id'        => $space->id,
+                'start_date'      => $start->toDateString(),
+                'end_date'        => $end->toDateString(),
+                'visit_date'      => $request->visit_date,
+                'total_price'     => round($totalPrice),
+                'price_breakdown' => $breakdown,
+                'status_id'       => Status::where('code', 'rnt_req_pending')->value('id'),
             ]);
 
             if ($request->filled('note')) {
@@ -106,12 +143,26 @@ class RentRequestController extends Controller
         }
     }
 
-    public function approve(Request $request, RentRequest $rentRequest)
+   public function approve(Request $request, RentRequest $rentRequest)
     {
         if ($rentRequest->renter_id !== Auth::id()) abort(403);
 
         DB::transaction(function () use ($rentRequest, $request) {
-            $rentRequest->update(['status_id' => Status::where('code', 'rnt_req_accepted')->value('id')]);
+            $latestReschedule = $rentRequest->reschedules()->latest()->first();
+            $ongoingStatusId = Status::where('code', 'rnt_ongoing')->value('id'); 
+            
+            if ($latestReschedule) {
+                $rentRequest->update([
+                    'visit_date'      => $latestReschedule->proposed_visit_date,
+                    'start_date'      => $latestReschedule->proposed_start_date,
+                    'end_date'        => $latestReschedule->proposed_end_date,
+                    'total_price'     => $latestReschedule->proposed_total_price,
+                    'price_breakdown' => $latestReschedule->price_breakdown,
+                    'status_id'       => $ongoingStatusId 
+                ]);
+            } else {
+                $rentRequest->update(['status_id' => $ongoingStatusId]); 
+            }
 
             if (!$rentRequest->rent) {
                 $space = $rentRequest->space;
@@ -119,8 +170,8 @@ class RentRequestController extends Controller
                     'request_id'      => $rentRequest->id,
                     'space_id'        => $space->id,
                     'space_name'      => $space->name,
-                    'price'           => $rentRequest->pricing->price ?? 0,
-                    'pricing_type'    => $rentRequest->pricing->pricingType->code ?? 'base',
+                    'price'           => $rentRequest->total_price,
+                    'pricing_type'    => 'dynamic_combination',
                     'space_length'    => $space->length,
                     'space_width'     => $space->width,
                     'space_area'      => $space->area,
@@ -130,11 +181,10 @@ class RentRequestController extends Controller
                     'renter_id'       => $rentRequest->renter_id,
                     'start_date'      => $rentRequest->start_date,
                     'end_date'        => $rentRequest->end_date,
-                    'status_id'       => Status::where('code', 'rnt_ongoing')->value('id'),
+                    'status_id'       => $ongoingStatusId,
                 ]);
             }
 
-            // Only create message if the renter explicitly left a note
             if ($request->filled('response_note')) {
                 RentMessage::create([
                     'request_id' => $rentRequest->id,
@@ -145,7 +195,7 @@ class RentRequestController extends Controller
             }
         });
 
-        return redirect()->back()->with('success', 'Application accepted! Contract created.');
+        return redirect()->back()->with('success', 'Offer accepted! Contract is now active.');
     }
 
     public function reject(Request $request, RentRequest $rentRequest)
@@ -155,13 +205,12 @@ class RentRequestController extends Controller
         DB::transaction(function () use ($rentRequest, $request) {
             $rentRequest->update(['status_id' => Status::where('code', 'rnt_req_cancelled')->value('id')]);
 
-            // Only create message if the renter explicitly left a reason
-            if ($request->filled('response_note')) {
+            if ($request->filled('reject_reason')) {
                 RentMessage::create([
                     'request_id' => $rentRequest->id,
                     'sender_id'  => Auth::id(),
                     'type_id'    => Status::where('code', 'msg_decline_reason')->value('id'),
-                    'message'    => $request->response_note,
+                    'message'    => $request->reject_reason,
                 ]);
             }
         });
@@ -177,22 +226,48 @@ class RentRequestController extends Controller
             $start = Carbon::parse($request->new_start_date);
             $end = Carbon::parse($request->new_end_date);
             $totalDays = $start->diffInDays($end) ?: 1;
-            
-            $basePrice = $rentRequest->pricing->price;
-            $code = strtolower($rentRequest->pricing->pricingType->code);
-            
-            if ($code === 'weekly') $totalPrice = ($basePrice / 7) * $totalDays;
-            elseif ($code === 'monthly') $totalPrice = ($basePrice / 30) * $totalDays;
-            else $totalPrice = $basePrice * $totalDays;
 
-            $rentRequest->update([
-                'visit_date'  => $request->new_visit_date,
-                'start_date'  => $start->toDateString(),
-                'end_date'    => $end->toDateString(),
-                'total_price' => round($totalPrice),
-            ]);
+            $rates = SpaceRegistrationPrice::where('space_registration_id', $rentRequest->space->registration_id)
+                ->join('pricing_types', 'space_registration_prices.pricing_type_id', '=', 'pricing_types.id')
+                ->pluck('space_registration_prices.price', 'pricing_types.code')
+                ->mapWithKeys(fn($item, $key) => [strtolower($key) => $item]);
 
-            // Only create message if the renter explicitly left a note
+            $rem = $totalDays;
+            $totalPrice = 0;
+            $breakdown = [];
+
+            if (isset($rates['monthly'])) {
+                $m = floor($rem / 30);
+                if ($m > 0) {
+                    $totalPrice += $m * $rates['monthly'];
+                    $rem %= 30;
+                    $breakdown['monthly'] = ['qty' => $m, 'unit_price' => $rates['monthly'], 'subtotal' => $m * $rates['monthly']];
+                }
+            }
+            if (isset($rates['weekly'])) {
+                $w = floor($rem / 7);
+                if ($w > 0) {
+                    $totalPrice += $w * $rates['weekly'];
+                    $rem %= 7;
+                    $breakdown['weekly'] = ['qty' => $w, 'unit_price' => $rates['weekly'], 'subtotal' => $w * $rates['weekly']];
+                }
+            }
+            if (isset($rates['daily']) && $rem > 0) {
+                $totalPrice += $rem * $rates['daily'];
+                $breakdown['daily'] = ['qty' => $rem, 'unit_price' => $rates['daily'], 'subtotal' => $rem * $rates['daily']];
+                $rem = 0;
+            } 
+            if ($rem > 0) {
+                $smallestRate = $rates['daily'] ?? ($rates['weekly'] ? $rates['weekly'] / 7 : ($rates['monthly'] ? $rates['monthly'] / 30 : 0));
+                if ($smallestRate > 0) {
+                    $sub = $rem * $smallestRate;
+                    $totalPrice += $sub;
+                    $breakdown['prorated_days'] = ['qty' => $rem, 'unit_price' => round($smallestRate), 'subtotal' => round($sub)];
+                }
+            }
+            
+            $breakdown['summary'] = ['total_days' => $totalDays, 'final_price' => round($totalPrice)];
+
             if ($request->filled('response_note')) {
                 RentMessage::create([
                     'request_id' => $rentRequest->id,
@@ -202,16 +277,60 @@ class RentRequestController extends Controller
                 ]);
             }
 
-            // Create independent Reschedule Log (Option B Schema!)
             RentReschedule::create([
-                'rent_request_id'     => $rentRequest->id,
-                'sender_id'           => Auth::id(),
-                'proposed_visit_date' => $request->new_visit_date,
-                'proposed_start_date' => $start->toDateString(),
-                'proposed_end_date'   => $end->toDateString(),
+                'rent_request_id'      => $rentRequest->id,
+                'sender_id'            => Auth::id(),
+                'proposed_visit_date'  => $request->new_visit_date,
+                'proposed_start_date'  => $start->toDateString(),
+                'proposed_end_date'    => $end->toDateString(),
+                'proposed_total_price' => round($totalPrice),
+                'price_breakdown'      => $breakdown,
             ]);
         });
 
-        return redirect()->back()->with('success', 'Counter-proposal sent! The dates are temporarily updated pending owner approval.');
+        return redirect()->back()->with('success', 'Counter-proposal sent! Pending owner approval.');
+    }
+
+    public function requestFinish(Request $request, RentRequest $rentRequest)
+    {
+        if ($rentRequest->renter_id !== Auth::id()) abort(403);
+        
+        RentMessage::create([
+            'request_id' => $rentRequest->id,
+            'sender_id'  => Auth::id(),
+            'type_id'    => \App\Models\Status::where('code', 'msg_finish_request')->value('id'),
+            'message'    => $request->finish_reason,
+        ]);
+        return back()->with('success', 'Early finish request sent to owner.');
+    }
+
+    public function approveFinish(Request $request, RentRequest $rentRequest)
+    {
+        if ($rentRequest->renter_id !== Auth::id()) abort(403);
+
+        $completedId = \App\Models\Status::where('code', 'rnt_completed')->value('id');
+        $rentRequest->update(['status_id' => $completedId]);
+        if ($rentRequest->rent) $rentRequest->rent->update(['status_id' => $completedId]);
+
+        RentMessage::create([
+            'request_id' => $rentRequest->id,
+            'sender_id'  => Auth::id(),
+            'type_id'    => \App\Models\Status::where('code', 'msg_finish_accepted')->value('id'),
+            'message'    => 'Early finish request approved. Contract is now completed.',
+        ]);
+        return back()->with('success', 'Rent marked as completed.');
+    }
+
+    public function rejectFinish(Request $request, RentRequest $rentRequest)
+    {
+        if ($rentRequest->renter_id !== Auth::id()) abort(403);
+        
+        RentMessage::create([
+            'request_id' => $rentRequest->id,
+            'sender_id'  => Auth::id(),
+            'type_id'    => \App\Models\Status::where('code', 'msg_finish_rejected')->value('id'),
+            'message'    => $request->reject_reason,
+        ]);
+        return back()->with('success', 'Early finish request rejected.');
     }
 }

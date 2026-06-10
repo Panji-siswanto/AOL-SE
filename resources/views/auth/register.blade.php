@@ -173,7 +173,7 @@
                 search: '',
                 countries: [],
                 filteredCountries: [],
-                selectedCountry: { name: 'Indonesia', code: '+62', flag: '🇮🇩' }, // Safe default
+                selectedCountry: { name: 'Indonesia', code: '+62', flag: '🇮🇩' }, 
                 
                 init() {
                     fetch('https://restcountries.com/v3.1/all?fields=name,idd,flag')
@@ -183,13 +183,10 @@
                                 .filter(c => c.idd && c.idd.root)
                                 .map(c => {
                                     let root = c.idd.root;
-                                    // Safely grab the first suffix if it exists
                                     let suffix = (c.idd.suffixes && c.idd.suffixes.length === 1) ? c.idd.suffixes[0] : '';
                                     let combined = root + suffix;
                                     
-                                    // THE SMART FILTER: Global country codes are a maximum of 3 digits.
-                                    // Including the '+', valid codes max out at 4 characters.
-                                    // This perfectly strips regional area codes like +1201 (US) down to +1, and +35818 (Aland) down to +358.
+                                    
                                     let finalCode = combined.length <= 4 ? combined : root;
 
                                     return {

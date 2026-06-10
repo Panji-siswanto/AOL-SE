@@ -15,7 +15,10 @@ trait Searchable
 
             foreach ($this->searchable as $field) {
                 if (str_contains($field, '.')) {
-                    [$relation, $column] = explode('.', $field);
+                    $lastDotPosition = strrpos($field, '.');
+                    $relation = substr($field, 0, $lastDotPosition);
+                    $column = substr($field, $lastDotPosition + 1);
+                    
                     $relations[$relation][] = $column;
                 } else {
                     $q->orWhere($field, 'like', "%{$term}%");

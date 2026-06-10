@@ -39,6 +39,10 @@ class StatusSeeder extends Seeder
             ['context' => 'rent_message', 'code' => 'msg_reschedule_proposal', 'name' => 'Reschedule Proposal'],
             ['context' => 'rent_message', 'code' => 'msg_reschedule_accepted', 'name' => 'Reschedule Accepted'],
             ['context' => 'rent_message', 'code' => 'msg_reschedule_rejected', 'name' => 'Reschedule Rejected'],
+            
+            ['context' => 'rent_message', 'code' => 'msg_finish_request', 'name' => 'Early Finish Request'],
+            ['context' => 'rent_message', 'code' => 'msg_finish_accepted', 'name' => 'Early Finish Accepted'],
+            ['context' => 'rent_message', 'code' => 'msg_finish_rejected', 'name' => 'Early Finish Rejected'],
         ];
 
         foreach ($statuses as $status) {

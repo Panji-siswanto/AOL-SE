@@ -1,5 +1,7 @@
 <?php
+
 namespace App\Models;
+
 use Illuminate\Database\Eloquent\Model;
 
 class RentReschedule extends Model
@@ -9,7 +11,13 @@ class RentReschedule extends Model
         'sender_id',    
         'proposed_visit_date', 
         'proposed_start_date', 
-        'proposed_end_date'
+        'proposed_end_date',
+        'proposed_total_price', 
+        'price_breakdown'       
+    ];
+
+    protected $casts = [
+        'price_breakdown' => 'array',
     ];
 
     public function request()

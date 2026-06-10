@@ -25,7 +25,7 @@ class DocumentTypeSeeder extends Seeder
 
         foreach ($types as $type) {
             DocumentType::firstOrCreate(
-                ['code' => $type['code']], // Prevent duplicates if run multiple times
+                ['code' => $type['code']], 
                 [
                     'name' => $type['name'],
                     'context' => $type['context'],

@@ -42,7 +42,6 @@ class LoginRequest extends FormRequest
         $this->ensureIsNotRateLimited();
         $credential = $this->input('auth_id');
 
-        // Determine if input is email or username
         $field = filter_var($credential, FILTER_VALIDATE_EMAIL)
             ? 'email'
             : 'username';

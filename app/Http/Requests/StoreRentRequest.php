@@ -14,11 +14,18 @@ class StoreRentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'pricing_id' => ['required', 'exists:space_registration_prices,id'],
             'start_date' => ['required', 'date', 'after_or_equal:today'],
             'duration'   => ['required', 'integer', 'min:1'],
-            'visit_date' => ['required', 'date', 'after_or_equal:today', 'before:start_date'],
+            'visit_date' => ['required', 'date', 'after_or_equal:today', 'before_or_equal:start_date'],
+            // 'end_date' => ['required', 'date', 'after:start_date'],
             'note'       => ['nullable', 'string', 'max:2000'],
+        ];
+    }
+
+    public function messages()
+    {
+        return [
+            'visit_date.before_or_equal' => 'The visit date must be on or before the contract start date.',
         ];
     }
 }

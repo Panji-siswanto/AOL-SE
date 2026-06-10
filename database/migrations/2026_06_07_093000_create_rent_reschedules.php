@@ -6,10 +6,7 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
-  public function up(): void
+    public function up(): void
     {
         Schema::create('rent_reschedules', function (Blueprint $table) {
             $table->id();
@@ -19,13 +16,13 @@ return new class extends Migration
             $table->date('proposed_start_date');
             $table->date('proposed_end_date');
             
+            $table->decimal('proposed_total_price', 15, 2);
+            $table->json('price_breakdown')->nullable();
+            
             $table->timestamps();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('rent_reschedules');

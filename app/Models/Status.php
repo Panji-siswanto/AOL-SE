@@ -49,6 +49,10 @@ class Status extends Model
     public const MSG_RESCHEDULE_ACCEPTED = 23;  
     public const MSG_RESCHEDULE_REJECTED = 24;  
 
+    public const MSG_FINISH_REQUEST = 25;  
+    public const MSG_FINISH_ACCEPTED = 26;  
+    public const MSG_FINISH_REJECTED = 27;  
+
     public function spaces()
     {
         return $this->hasMany(Space::class);

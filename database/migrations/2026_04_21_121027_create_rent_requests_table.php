@@ -13,14 +13,13 @@ return new class extends Migration
             $table->foreignId('renter_id')->constrained('users')->cascadeOnDelete();
             $table->foreignId('space_id')->constrained('spaces')->cascadeOnDelete();
             
-            $table->foreignId('pricing_id')
-                  ->constrained('space_registration_prices');
-
             $table->date('start_date');
             $table->date('end_date');
             $table->date('visit_date')->nullable();
             
             $table->decimal('total_price', 15, 2)->default(0);
+            $table->json('price_breakdown')->nullable();
+
             $table->foreignId('status_id')->constrained('statuses');
             $table->timestamps();
         });

@@ -112,7 +112,7 @@ class SpaceRegistrationController extends Controller
             'length' => $request->dimension_type === 'exact' ? $request->length : null,
             'width'=> $request->dimension_type === 'exact' ? $request->width : null,
             'area' => $area,
-            'status_id '=> Status::where('code', 'reg_pending')->value('id'),
+            'status_id'   => Status::where('code', 'reg_pending')->value('id'),        
         ]);
     }
 

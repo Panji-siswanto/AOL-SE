@@ -17,17 +17,17 @@ class RescheduleRentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'new_visit_date' => ['nullable', 'date', 'before:new_start_date'],
+            'new_visit_date' => ['nullable', 'date', 'before_or_equal:new_start_date'],
             'new_start_date' => ['required', 'date', 'after_or_equal:today'],
             'new_end_date'   => ['required', 'date', 'after:new_start_date'],
-            'response_note'  => ['nullable', 'string', 'max:1000'], 
+            'response_note'  => ['nullable', 'string', 'max:1000'],
         ];
     }
 
     public function messages()
     {
         return [
-            'new_visit_date.before' => 'The visit date must be before the contract start date.',
+            'new_visit_date.before_or_equal' => 'The visit date must be on or before the contract start date.',
         ];
     }
 }

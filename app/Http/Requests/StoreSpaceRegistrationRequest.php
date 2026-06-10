@@ -28,6 +28,7 @@ class StoreSpaceRegistrationRequest extends FormRequest
             'length' => ['nullable', 'numeric', 'min:0.1', 'required_if:dimension_type,exact'],
             'width'  => ['nullable', 'numeric', 'min:0.1', 'required_if:dimension_type,exact'],
             'area'   => ['nullable', 'numeric', 'min:0.1', 'required_if:dimension_type,total'],
+        
 
             // Pricing
             'pricing' => ['required', 'array', 'min:1'],

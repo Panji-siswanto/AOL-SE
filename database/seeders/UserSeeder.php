@@ -6,6 +6,7 @@ use App\Models\Status;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Spatie\Permission\Models\Role;
 
 class UserSeeder extends Seeder
 {
@@ -15,40 +16,43 @@ class UserSeeder extends Seeder
         $verifiedStatus = Status::where('code', 'usr_verified')->value('id');
         $unverifiedStatus = Status::where('code', 'usr_unverified')->value('id');
 
-        // Admin
+        Role::firstOrCreate(['name' => 'admin']);
+        Role::firstOrCreate(['name' => 'renter']);
+        Role::firstOrCreate(['name' => 'owner']);
+
+        // 1. Admin
         $admin = User::firstOrCreate(
             ['email' => 'admin@lapak.in'],
-            [
-                'username'          => 'admin',
-                'name'              => 'System Administrator',
-                'password'          => $defaultPassword,
-                'ver_status'        => $verifiedStatus,
-                'email_verified_at' => now(),
-            ]
+            ['username' => 'admin', 'name' => 'System Administrator', 'password' => $defaultPassword, 'ver_status' => $verifiedStatus, 'email_verified_at' => now()]
         );
+        if (!$admin->hasRole('admin')) $admin->assignRole('admin');
 
-        if (!$admin->hasRole('admin')) {
-            $admin->assignRole('admin');
-        }
-
-        // Renter (Now auto-verified so you can test renting immediately!)
+        // 2. Renter
         $renter = User::firstOrCreate(
             ['email' => 'renter@lapak.in'],
-            [
-                'username'          => 'renter',
-                'name'              => 'Mas Renter',
-                'password'          => $defaultPassword,
-                'ver_status'        => $unverifiedStatus,
-                'email_verified_at' => now(),
-            ]
+            ['username' => 'renter', 'name' => 'Mas Renter', 'password' => $defaultPassword, 'ver_status' => $verifiedStatus, 'email_verified_at' => now()]
         );
+        if (!$renter->hasRole('renter')) $renter->assignRole('renter');
 
-        if (!$renter->hasRole('renter')) {
-            $renter->assignRole('renter');
-        }
+        // 3. Owners
+        $owner1 = User::firstOrCreate(
+            ['email' => 'owner1@lapak.in'],
+            ['name' => 'Owner 1', 'username' => 'owner1', 'phone' => '+6281234567891', 'password' => $defaultPassword, 'ver_status' => $verifiedStatus, 'email_verified_at' => now()]
+        );
+        $owner1->assignRole(['renter', 'owner']);
+
+        $owner2 = User::firstOrCreate(
+            ['email' => 'owner2@lapak.in'],
+            ['name' => 'Owner 2', 'username' => 'owner2', 'phone' => '+6281234567892', 'password' => $defaultPassword, 'ver_status' => $verifiedStatus, 'email_verified_at' => now()]
+        );
+        $owner2->assignRole(['renter', 'owner']); 
+
+        $owner3 = User::firstOrCreate(
+            ['email' => 'owner3@lapak.in'],
+            ['name' => 'Owner 3 Ruko', 'username' => 'owner3', 'phone' => '+6281234567893', 'password' => $defaultPassword, 'ver_status' => $verifiedStatus, 'email_verified_at' => now()]
+        );
+        $owner3->assignRole(['renter', 'owner']);
 
         $this->command->info('Users seeded successfully!');
-        $this->command->line('Admin: admin@lapak.in | PW: pass123');
-        $this->command->line('Renter: renter@lapak.in | PW: pass123');
     }
 }
