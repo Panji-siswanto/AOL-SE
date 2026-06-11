@@ -17,12 +17,14 @@
 
         <div class="mb-8">
             <div class="flex space-x-1 bg-gray-100/80 p-1 rounded-2xl w-full sm:w-fit mb-6 overflow-x-auto scrollbar-hide">
-                <a href="{{ route('owner.reservations.index', ['status' => 'all', 'sort' => $currentSort, 'search' => request('search')]) }}" class="px-6 py-2.5 text-sm font-bold rounded-xl transition-all whitespace-nowrap {{ $currentStatus === 'all' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50' }}">All Requests</a>
+                <a href="{{ route('owner.reservations.index', ['status' => 'all', 'sort' => $currentSort, 'search' => request('search')]) }}" class="px-6 py-2.5 text-sm font-bold rounded-xl transition-all whitespace-nowrap {{ $currentStatus === 'all' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50' }}">All</a>
+                <a href="{{ route('owner.reservations.index', ['status' => 'action_required', 'sort' => $currentSort, 'search' => request('search')]) }}" class="px-6 py-2.5 text-sm font-bold rounded-xl transition-all whitespace-nowrap {{ $currentStatus === 'action_required' ? 'bg-orange-500 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50' }}">Action Required</a>
                 <a href="{{ route('owner.reservations.index', ['status' => 'rnt_req_pending', 'sort' => $currentSort, 'search' => request('search')]) }}" class="px-6 py-2.5 text-sm font-bold rounded-xl transition-all whitespace-nowrap {{ $currentStatus === 'rnt_req_pending' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50' }}">Pending</a>
-                <a href="{{ route('owner.reservations.index', ['status' => 'rnt_ongoing', 'sort' => $currentSort, 'search' => request('search')]) }}" class="px-6 py-2.5 text-sm font-bold rounded-xl transition-all whitespace-nowrap {{ $currentStatus === 'rnt_ongoing' ? 'bg-blue-500 text-white shadow-sm shadow-blue-500/30' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50' }}">Ongoing (Active)</a>
-                <a href="{{ route('owner.reservations.index', ['status' => 'rnt_completed', 'sort' => $currentSort, 'search' => request('search')]) }}" class="px-6 py-2.5 text-sm font-bold rounded-xl transition-all whitespace-nowrap {{ $currentStatus === 'rnt_completed' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50' }}">History (Completed)</a>
-                <a href="{{ route('owner.reservations.index', ['status' => 'rnt_req_rejected', 'sort' => $currentSort, 'search' => request('search')]) }}" class="px-6 py-2.5 text-sm font-bold rounded-xl transition-all whitespace-nowrap {{ $currentStatus === 'rnt_req_rejected' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50' }}">Rejected</a>
+                <a href="{{ route('owner.reservations.index', ['status' => 'rnt_awaiting_payment', 'sort' => $currentSort, 'search' => request('search')]) }}" class="px-6 py-2.5 text-sm font-bold rounded-xl transition-all whitespace-nowrap {{ $currentStatus === 'rnt_awaiting_payment' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50' }}">Waiting for Payment</a>
+                <a href="{{ route('owner.reservations.index', ['status' => 'rnt_ongoing', 'sort' => $currentSort, 'search' => request('search')]) }}" class="px-6 py-2.5 text-sm font-bold rounded-xl transition-all whitespace-nowrap {{ $currentStatus === 'rnt_ongoing' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50' }}">Ongoing</a>
+                <a href="{{ route('owner.reservations.index', ['status' => 'rnt_completed', 'sort' => $currentSort, 'search' => request('search')]) }}" class="px-6 py-2.5 text-sm font-bold rounded-xl transition-all whitespace-nowrap {{ $currentStatus === 'rnt_completed' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50' }}">Completed</a>
                 <a href="{{ route('owner.reservations.index', ['status' => 'rnt_req_cancelled', 'sort' => $currentSort, 'search' => request('search')]) }}" class="px-6 py-2.5 text-sm font-bold rounded-xl transition-all whitespace-nowrap {{ $currentStatus === 'rnt_req_cancelled' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50' }}">Cancelled</a>
+                <a href="{{ route('owner.reservations.index', ['status' => 'rnt_req_rejected', 'sort' => $currentSort, 'search' => request('search')]) }}" class="px-6 py-2.5 text-sm font-bold rounded-xl transition-all whitespace-nowrap {{ $currentStatus === 'rnt_req_rejected' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50' }}">Rejected</a>
             </div>
 
             <form method="GET" action="{{ route('owner.reservations.index') }}" class="flex flex-col md:flex-row gap-4 items-center">
@@ -57,51 +59,39 @@
                         $rejectedId = \App\Models\Status::where('code', 'rnt_req_rejected')->value('id');
                         $cancelledId = \App\Models\Status::where('code', 'rnt_req_cancelled')->value('id');
                         
+                        $awaitingPaymentId = \App\Models\Status::where('code', 'rnt_awaiting_payment')->value('id');
                         $ongoingId = \App\Models\Status::where('code', 'rnt_ongoing')->value('id');
                         $completedId = \App\Models\Status::where('code', 'rnt_completed')->value('id');
+                        
                         $msgFinishReqId = \App\Models\Status::where('code', 'msg_finish_request')->value('id');
                         $msgFinishRejectedId = \App\Models\Status::where('code', 'msg_finish_rejected')->value('id');
 
-                        $latestSenderId = $request->renter_id;
-                        $isPendingReschedule = false;
+                        $latestMessageAll = $request->messages->sortByDesc('id')->first();
+                        $latestSenderId = $latestMessageAll ? $latestMessageAll->sender_id : $request->renter_id;
 
-                        $latestReschedule = $request->reschedules->sortByDesc('created_at')->first();
-                        $latestMessageAll = $request->messages->sortByDesc('created_at')->first();
-
-                        if ($latestReschedule && $latestMessageAll) {
-                            if ($latestReschedule->created_at->gte($latestMessageAll->created_at)) {
-                                $latestSenderId = $latestReschedule->sender_id;
-                                $isPendingReschedule = true;
-                            } else {
-                                $latestSenderId = $latestMessageAll->sender_id;
-                            }
-                        } elseif ($latestReschedule) {
-                            $latestSenderId = $latestReschedule->sender_id;
-                            $isPendingReschedule = true;
-                        } elseif ($latestMessageAll) {
-                            $latestSenderId = $latestMessageAll->sender_id;
-                        }
+                        $latestReschedule = $request->reschedules->sortByDesc('id')->first();
+                        $isPendingReschedule = ($request->status_id == $pendingId && $latestReschedule) ? true : false;
 
                         $isMyTurn = $request->status_id == $pendingId && $latestSenderId !== Auth::id();
-                        $waitingForRenter = $request->status_id == $pendingId && $latestSenderId === Auth::id();
+                        $waitingForOther = $request->status_id == $pendingId && $latestSenderId === Auth::id();
 
                         $pendingFinishMsg = null;
                         $rejectedFinishMsg = null;
                         $isMyTurnFinish = false;
-                        $waitingForRenterFinish = false;
+                        $waitingForOtherFinish = false;
 
                         if ($request->status_id == $ongoingId) {
                             $latestFinishStatusMsg = $request->messages->whereIn('type_id', [
                                 $msgFinishReqId, 
                                 \App\Models\Status::where('code', 'msg_finish_accepted')->value('id'), 
                                 $msgFinishRejectedId
-                            ])->sortByDesc('created_at')->first();
+                            ])->sortByDesc('id')->first();
 
                             if ($latestFinishStatusMsg) {
                                 if ($latestFinishStatusMsg->type_id == $msgFinishReqId) {
                                     $pendingFinishMsg = $latestFinishStatusMsg;
                                     $isMyTurnFinish = $pendingFinishMsg->sender_id !== Auth::id();
-                                    $waitingForRenterFinish = $pendingFinishMsg->sender_id === Auth::id();
+                                    $waitingForOtherFinish = $pendingFinishMsg->sender_id === Auth::id();
                                 } elseif ($latestFinishStatusMsg->type_id == $msgFinishRejectedId) {
                                     $rejectedFinishMsg = $latestFinishStatusMsg; 
                                 }
@@ -133,7 +123,7 @@
                         $durationString = !empty($durationParts) ? implode(', ', $durationParts) : 'N/A';
                     @endphp
 
-                    {{--  MAIN COMPACT CARD --}}
+                    {{-- MAIN COMPACT CARD --}}
                     <div class="bg-white p-5 rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-md transition-all flex flex-col md:flex-row gap-6 items-center">
                         <div class="w-full md:w-48 h-32 flex-shrink-0 rounded-2xl overflow-hidden bg-gray-100 relative">
                             <img src="{{ $request->space->cover_photo_url }}" class="absolute inset-0 w-full h-full object-cover">
@@ -148,13 +138,29 @@
                                     </p>
                                 </div>
                                 <div class="flex-shrink-0">
-                                    @if($isMyTurn || $isMyTurnFinish) <span class="bg-orange-50 text-orange-600 px-3 py-1.5 rounded-lg text-[10px] font-black border border-orange-100 uppercase tracking-wider shadow-sm">Action Required</span>
-                                    @elseif($waitingForRenter || $waitingForRenterFinish) <span class="bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg text-[10px] font-black border border-blue-100 uppercase tracking-wider">Waiting for Renter</span>
-                                    @elseif($request->status_id == $ongoingId) <span class="bg-blue-500 text-white px-3 py-1.5 rounded-lg text-[10px] font-black shadow-sm uppercase tracking-wider">Ongoing (Active)</span>
-                                    @elseif($request->status_id == $completedId) <span class="bg-gray-800 text-white px-3 py-1.5 rounded-lg text-[10px] font-black shadow-sm uppercase tracking-wider">Completed</span>
-                                    @elseif($request->status_id == $rejectedId) <span class="bg-red-50 text-red-600 px-3 py-1.5 rounded-lg text-[10px] font-black border border-red-100 uppercase tracking-wider">Rejected</span>
-                                    @elseif($request->status_id == $cancelledId) <span class="bg-gray-100 text-gray-500 px-3 py-1.5 rounded-lg text-[10px] font-black border border-gray-200 uppercase tracking-wider">Cancelled</span>
-                                    @else <span class="bg-gray-100 text-gray-600 px-3 py-1.5 rounded-lg text-[10px] font-black border border-gray-200 uppercase tracking-wider">{{ $request->status->name }}</span>
+                                    {{-- Dynamic Action Required Badges --}}
+                                    @if($isMyTurnFinish)
+                                        <span class="bg-orange-500 text-white px-3 py-1.5 rounded-lg text-[10px] font-black shadow-sm uppercase tracking-wider">Action Required: Finish Request</span>
+                                    @elseif($isMyTurn && $isPendingReschedule)
+                                        <span class="bg-orange-500 text-white px-3 py-1.5 rounded-lg text-[10px] font-black shadow-sm uppercase tracking-wider">Action Required: Reschedule</span>
+                                    @elseif($isMyTurn && !$isPendingReschedule)
+                                        <span class="bg-orange-500 text-white px-3 py-1.5 rounded-lg text-[10px] font-black shadow-sm uppercase tracking-wider">Action Required: New Application</span>
+                                    
+                                    {{-- General Status Badges --}}
+                                    @elseif($request->status_id == $awaitingPaymentId) 
+                                        <span class="bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg text-[10px] font-black border border-indigo-100 uppercase tracking-wider">Waiting for Payment</span>
+                                    @elseif($waitingForOther || $waitingForOtherFinish) 
+                                        <span class="bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg text-[10px] font-black border border-blue-100 uppercase tracking-wider">Waiting for Renter</span>
+                                    @elseif($request->status_id == $ongoingId) 
+                                        <span class="bg-blue-500 text-white px-3 py-1.5 rounded-lg text-[10px] font-black shadow-sm uppercase tracking-wider">Ongoing</span>
+                                    @elseif($request->status_id == $completedId) 
+                                        <span class="bg-gray-800 text-white px-3 py-1.5 rounded-lg text-[10px] font-black shadow-sm uppercase tracking-wider">Completed</span>
+                                    @elseif($request->status_id == $rejectedId) 
+                                        <span class="bg-red-50 text-red-600 px-3 py-1.5 rounded-lg text-[10px] font-black border border-red-100 uppercase tracking-wider">Rejected</span>
+                                    @elseif($request->status_id == $cancelledId) 
+                                        <span class="bg-gray-100 text-gray-500 px-3 py-1.5 rounded-lg text-[10px] font-black border border-gray-200 uppercase tracking-wider">Cancelled</span>
+                                    @else 
+                                        <span class="bg-gray-100 text-gray-600 px-3 py-1.5 rounded-lg text-[10px] font-black border border-gray-200 uppercase tracking-wider">{{ $request->status->name }}</span>
                                     @endif
                                 </div>
                             </div>
@@ -227,7 +233,7 @@
 
                                             @if($displayBreakdown && is_array($displayBreakdown))
                                                 <div class="px-4 border-l-2 border-gray-200">
-                                                    <p class="text-[10px] font-black uppercase text-gray-400 tracking-wider mb-2">Revenue Breakdown</p>
+                                                    <p class="text-[10px] font-black uppercase text-gray-400 tracking-wider mb-2">Revenue Breakdown Calculation</p>
                                                     <div class="text-xs text-gray-500 font-bold flex flex-wrap gap-3">
                                                         @if(isset($displayBreakdown['monthly'])) <span>{{ $displayBreakdown['monthly']['qty'] }} Month(s)</span> @endif
                                                         @if(isset($displayBreakdown['weekly'])) <span>{{ $displayBreakdown['weekly']['qty'] }} Week(s)</span> @endif
@@ -242,9 +248,19 @@
                                         <div class="lg:col-span-2 flex flex-col h-full justify-between border-t lg:border-t-0 lg:border-l border-gray-100 pt-8 lg:pt-0 lg:pl-10">
                                             
                                             <div class="flex-grow flex flex-col">
+
+                                                {{-- QUARANTINED: AWAITING RENTER PAYMENT --}}
+                                                @if($request->status_id == $awaitingPaymentId)
+                                                    <div class="mb-8 bg-orange-50/50 border border-orange-100 rounded-3xl p-6 text-center">
+                                                        <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-orange-100 text-orange-600 mb-3 shadow-inner">
+                                                            <svg class="w-6 h-6 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                                        </div>
+                                                        <h4 class="text-sm font-black text-orange-900 mb-1 uppercase tracking-wider">Awaiting Payment</h4>
+                                                        <p class="text-xs font-medium text-orange-700">You have approved this request. The contract will automatically activate once {{ $request->renter->name }} settles the payment.</p>
+                                                    </div>
                                                 
-                                                {{-- 🔥 ONGOING & EARLY FINISH CONTEXT --}}
-                                                @if($request->status_id == $ongoingId || $request->status_id == $completedId)
+                                                {{-- ONGOING & EARLY FINISH CONTEXT --}}
+                                                @elseif($request->status_id == $ongoingId || $request->status_id == $completedId)
                                                     @if($pendingFinishMsg)
                                                         <div class="mb-8 border-2 border-orange-100 bg-orange-50/50 rounded-3xl p-6 relative">
                                                             <div class="flex items-center gap-2 mb-3">
@@ -256,7 +272,7 @@
                                                             <p class="text-sm font-medium text-gray-700 leading-relaxed">{{ $pendingFinishMsg->message }}</p>
                                                         </div>
 
-                                                    {{-- 🔥 DYNAMIC REJECTION MESSAGE --}}
+                                                    {{-- DYNAMIC REJECTION MESSAGE --}}
                                                     @elseif($rejectedFinishMsg)
                                                         <div class="mb-8 border-2 {{ $rejectedFinishMsg->sender_id == Auth::id() ? 'border-blue-100 bg-blue-50/50' : 'border-red-100 bg-red-50/50' }} rounded-3xl p-6 relative">
                                                             <div class="flex items-center gap-2 mb-3">
@@ -281,10 +297,10 @@
                                                 {{-- PENDING/RESCHEDULE CONTEXT --}}
                                                 @if($isPendingReschedule && $latestReschedule)
                                                     @php $rescheduleMsg = $request->messages->where('sender_id', $latestSenderId)->where('created_at', '>=', $latestReschedule->created_at->subMinutes(2))->first(); @endphp
-                                                    <div class="mb-8">
-                                                        <div class="flex items-center gap-2 mb-4">
-                                                            <span class="w-2 h-2 rounded-full {{ $isMyTurn ? 'bg-orange-500 animate-pulse' : 'bg-blue-500' }}"></span>
-                                                            <span class="text-[10px] font-black uppercase {{ $isMyTurn ? 'text-orange-600' : 'text-blue-600' }} tracking-wider">
+                                                    <div class="mb-8 border-2 border-orange-100 rounded-3xl p-6 relative">
+                                                        <div class="flex items-center gap-2 mb-3">
+                                                            <span class="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
+                                                            <span class="text-[10px] font-black uppercase text-orange-600 tracking-wider">
                                                                 {{ $isMyTurn ? "Renter's Proposal Alternative" : 'Your Counter-Proposal' }}
                                                             </span>
                                                         </div>
@@ -296,7 +312,7 @@
                                                         <p class="text-sm font-medium text-red-900 leading-relaxed">{{ $declineMsg->message }}</p>
                                                     </div>
                                                 @elseif($request->status_id == $pendingId && !$isPendingReschedule)
-                                                    @php $appMsg = $request->messages->where('sender_id', $request->renter_id)->whereNotIn('type_id', [$msgApproveId, $msgDeclineId])->sortByDesc('created_at')->first(); @endphp
+                                                    @php $appMsg = $request->messages->where('sender_id', '!=', Auth::id())->whereNotIn('type_id', [$msgApproveId, $msgDeclineId])->sortByDesc('created_at')->first(); @endphp
                                                     @if($appMsg)
                                                         <div class="mb-8">
                                                             <span class="text-[10px] font-black uppercase text-gray-500 tracking-wider flex items-center gap-2 mb-3"><span>💬</span> Renter's Proposal</span>
@@ -322,7 +338,7 @@
                                                     @if($isMyTurnFinish)
                                                         <button @click.prevent="showDetails = false; setTimeout(() => $dispatch('open-accept-finish-modal-{{ $request->id }}'), 150)" class="w-full bg-orange-500 hover:bg-orange-600 text-white py-3.5 rounded-2xl font-black text-sm transition shadow-lg active:scale-95">Accept Early Finish</button>
                                                         <button @click.prevent="showDetails = false; setTimeout(() => $dispatch('open-reject-finish-modal-{{ $request->id }}'), 150)" class="w-full bg-white text-red-500 border border-red-100 py-3.5 rounded-2xl font-black text-sm transition mt-2">Reject Request</button>
-                                                    @elseif($waitingForRenterFinish)
+                                                    @elseif($waitingForOtherFinish)
                                                         <button class="w-full bg-gray-100 text-gray-400 py-3.5 rounded-2xl font-bold text-sm cursor-not-allowed" disabled>Waiting for Renter Response...</button>
                                                     @else
                                                         <button @click.prevent="showDetails = false; setTimeout(() => $dispatch('open-request-finish-modal-{{ $request->id }}'), 150)" class="w-full bg-red-50 hover:bg-red-100 text-red-600 py-3.5 rounded-2xl font-black text-sm transition active:scale-95">Request Early Finish</button>
@@ -334,7 +350,11 @@
                                                     <button @click.prevent="showDetails = false; setTimeout(() => $dispatch('open-approve-modal-{{ $request->id }}'), 150)" class="w-full bg-teal-600 hover:bg-teal-700 text-white py-3.5 rounded-2xl font-black text-sm transition shadow-lg shadow-teal-600/20 active:scale-95">Accept Application</button>
                                                     <button @click.prevent="showDetails = false; setTimeout(() => $dispatch('open-reschedule-modal-{{ $request->id }}'), 150)" class="w-full bg-white text-blue-700 border-2 border-blue-200 hover:border-blue-300 hover:bg-blue-50 py-3.5 rounded-2xl font-black text-sm transition shadow-sm active:scale-95">Propose New Dates</button>
                                                     <button @click.prevent="showDetails = false; setTimeout(() => $dispatch('open-decline-modal-{{ $request->id }}'), 150)" class="w-full bg-white text-red-500 border border-red-100 hover:bg-red-50 py-3.5 rounded-2xl font-black text-sm transition active:scale-95 mt-2">Decline Application</button>
-                                                @elseif($waitingForRenter)
+                                                @elseif($isMyTurn && !$isPendingReschedule)
+                                                    <button @click.prevent="showDetails = false; setTimeout(() => $dispatch('open-approve-modal-{{ $request->id }}'), 150)" class="w-full bg-teal-600 hover:bg-teal-700 text-white py-3.5 rounded-2xl font-black text-sm transition shadow-lg shadow-teal-600/20 active:scale-95">Accept Application</button>
+                                                    <button @click.prevent="showDetails = false; setTimeout(() => $dispatch('open-reschedule-modal-{{ $request->id }}'), 150)" class="w-full bg-white text-blue-700 border-2 border-blue-200 hover:border-blue-300 hover:bg-blue-50 py-3.5 rounded-2xl font-black text-sm transition shadow-sm active:scale-95">Propose Dates</button>
+                                                    <button @click.prevent="showDetails = false; setTimeout(() => $dispatch('open-decline-modal-{{ $request->id }}'), 150)" class="w-full bg-white text-red-500 border border-red-100 hover:bg-red-50 py-3.5 rounded-2xl font-black text-sm transition active:scale-95 mt-2">Decline</button>
+                                                @elseif($waitingForOther)
                                                     <button @click.prevent="showDetails = false; setTimeout(() => $dispatch('open-decline-modal-{{ $request->id }}'), 150)" class="w-full bg-red-50 hover:bg-red-100 text-red-600 py-3.5 rounded-2xl font-black text-sm transition active:scale-95">Withdraw & Decline</button>
                                                     <button @click="showDetails = false" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-900 py-3.5 rounded-2xl font-black text-sm transition mt-2">Close</button>
                                                 @else
@@ -350,7 +370,7 @@
                         </div>
                     </div>
 
-                    {{--  MODALS: Owner Actions --}}
+                    {{-- MODALS: Owner Actions --}}
                     @if($request->status_id == $pendingId)
                         {{-- Accept Modal --}}
                         @if($isMyTurn)
@@ -469,7 +489,7 @@
                         @endif
                     @endif
 
-                    {{-- 🔥 EARLY FINISH ONGOING MODALS (Owner side) --}}
+                    {{-- EARLY FINISH ONGOING MODALS (Owner side) --}}
                     @if($request->status_id == $ongoingId)
                         {{-- Owner Requesting Early Finish --}}
                         @if(!$pendingFinishMsg)
@@ -508,8 +528,8 @@
                                         <form action="{{ route('owner.reservations.finish.approve', $request->id) }}" method="POST">
                                             @csrf
                                             <div class="flex gap-3">
-                                                <button type="button" @click="showAcceptFinish = false; setTimeout(() => $dispatch('open-details-modal-{{ $request->id }}'), 300)" class="w-1/2 bg-gray-100 rounded-xl py-3.5 font-bold">Cancel</button>
-                                                <button type="submit" class="w-1/2 bg-orange-500 text-white rounded-xl py-3.5 font-black active:scale-95 shadow-sm">Yes, Terminate</button>
+                                                <button type="button" @click="showAcceptFinish = false; setTimeout(() => $dispatch('open-details-modal-{{ $request->id }}'), 300)" class="w-1/2 bg-gray-100 hover:bg-gray-200 text-gray-900 rounded-xl py-3.5 font-bold transition">Cancel</button>
+                                                <button type="submit" class="w-1/2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl py-3.5 font-black transition active:scale-95 shadow-sm">Yes, Terminate</button>
                                             </div>
                                         </form>
                                     </div>

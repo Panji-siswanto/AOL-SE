@@ -12,6 +12,7 @@ use App\Models\RentReschedule;
 use App\Models\Space;
 use App\Models\SpaceRegistrationPrice;
 use App\Models\Status;
+use App\Models\Payment; 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -143,13 +144,13 @@ class RentRequestController extends Controller
         }
     }
 
-   public function approve(Request $request, RentRequest $rentRequest)
+    public function approve(Request $request, RentRequest $rentRequest)
     {
         if ($rentRequest->renter_id !== Auth::id()) abort(403);
 
         DB::transaction(function () use ($rentRequest, $request) {
             $latestReschedule = $rentRequest->reschedules()->latest()->first();
-            $ongoingStatusId = Status::where('code', 'rnt_ongoing')->value('id'); 
+            $awaitingPaymentId = Status::where('code', 'rnt_awaiting_payment')->value('id');  
             
             if ($latestReschedule) {
                 $rentRequest->update([
@@ -158,31 +159,10 @@ class RentRequestController extends Controller
                     'end_date'        => $latestReschedule->proposed_end_date,
                     'total_price'     => $latestReschedule->proposed_total_price,
                     'price_breakdown' => $latestReschedule->price_breakdown,
-                    'status_id'       => $ongoingStatusId 
+                    'status_id'       => $awaitingPaymentId 
                 ]);
             } else {
-                $rentRequest->update(['status_id' => $ongoingStatusId]); 
-            }
-
-            if (!$rentRequest->rent) {
-                $space = $rentRequest->space;
-                Rent::create([
-                    'request_id'      => $rentRequest->id,
-                    'space_id'        => $space->id,
-                    'space_name'      => $space->name,
-                    'price'           => $rentRequest->total_price,
-                    'pricing_type'    => 'dynamic_combination',
-                    'space_length'    => $space->length,
-                    'space_width'     => $space->width,
-                    'space_area'      => $space->area,
-                    'space_address'   => $space->location->address . ', ' . $space->location->city,
-                    'space_latitude'  => $space->location->latitude,
-                    'space_longitude' => $space->location->longitude,
-                    'renter_id'       => $rentRequest->renter_id,
-                    'start_date'      => $rentRequest->start_date,
-                    'end_date'        => $rentRequest->end_date,
-                    'status_id'       => $ongoingStatusId,
-                ]);
+                $rentRequest->update(['status_id' => $awaitingPaymentId]); 
             }
 
             if ($request->filled('response_note')) {
@@ -195,7 +175,48 @@ class RentRequestController extends Controller
             }
         });
 
-        return redirect()->back()->with('success', 'Offer accepted! Contract is now active.');
+        return redirect()->back()->with('success', 'Offer accepted! Please complete your payment to activate the contract.');
+    }
+
+    public function pay(Request $request, RentRequest $rentRequest)
+    {
+        if ($rentRequest->renter_id !== Auth::id()) abort(403);
+        $awaitingPaymentId = Status::where('code', 'rnt_awaiting_payment')->value('id');
+        if ($rentRequest->status_id !== $awaitingPaymentId) abort(400, 'Invalid payment state.');
+
+        DB::transaction(function () use ($rentRequest) {
+            $ongoingId = Status::where('code', 'rnt_ongoing')->value('id');
+            
+            $rentRequest->update(['status_id' => $ongoingId]);
+
+            Payment::create([
+                'rent_request_id' => $rentRequest->id,
+                'amount'          => $rentRequest->total_price,
+                'method'          => 'Simulated Demo Gateway',
+                'paid_at'         => now(),
+            ]);
+
+            $space = $rentRequest->space;
+            Rent::create([
+                'request_id'      => $rentRequest->id,
+                'space_id'        => $space->id,
+                'space_name'      => $space->name,
+                'price'           => $rentRequest->total_price,
+                'pricing_type'    => 'dynamic_combination',
+                'space_length'    => $space->length,
+                'space_width'     => $space->width,
+                'space_area'      => $space->area,
+                'space_address'   => $space->location->address . ', ' . $space->location->city,
+                'space_latitude'  => $space->location->latitude,
+                'space_longitude' => $space->location->longitude,
+                'renter_id'       => $rentRequest->renter_id,
+                'start_date'      => $rentRequest->start_date,
+                'end_date'        => $rentRequest->end_date,
+                'status_id'       => $ongoingId,
+            ]);
+        });
+
+        return redirect()->back()->with('success', 'Payment successful! Your rent is now active.');
     }
 
     public function reject(Request $request, RentRequest $rentRequest)
@@ -298,7 +319,7 @@ class RentRequestController extends Controller
         RentMessage::create([
             'request_id' => $rentRequest->id,
             'sender_id'  => Auth::id(),
-            'type_id'    => \App\Models\Status::where('code', 'msg_finish_request')->value('id'),
+            'type_id'    => Status::where('code', 'msg_finish_request')->value('id'),
             'message'    => $request->finish_reason,
         ]);
         return back()->with('success', 'Early finish request sent to owner.');
@@ -308,14 +329,14 @@ class RentRequestController extends Controller
     {
         if ($rentRequest->renter_id !== Auth::id()) abort(403);
 
-        $completedId = \App\Models\Status::where('code', 'rnt_completed')->value('id');
+        $completedId = Status::where('code', 'rnt_completed')->value('id');
         $rentRequest->update(['status_id' => $completedId]);
         if ($rentRequest->rent) $rentRequest->rent->update(['status_id' => $completedId]);
 
         RentMessage::create([
             'request_id' => $rentRequest->id,
             'sender_id'  => Auth::id(),
-            'type_id'    => \App\Models\Status::where('code', 'msg_finish_accepted')->value('id'),
+            'type_id'    => Status::where('code', 'msg_finish_accepted')->value('id'),
             'message'    => 'Early finish request approved. Contract is now completed.',
         ]);
         return back()->with('success', 'Rent marked as completed.');
@@ -328,7 +349,7 @@ class RentRequestController extends Controller
         RentMessage::create([
             'request_id' => $rentRequest->id,
             'sender_id'  => Auth::id(),
-            'type_id'    => \App\Models\Status::where('code', 'msg_finish_rejected')->value('id'),
+            'type_id'    => Status::where('code', 'msg_finish_rejected')->value('id'),
             'message'    => $request->reject_reason,
         ]);
         return back()->with('success', 'Early finish request rejected.');

@@ -34,7 +34,7 @@ class Status extends Model
     public const SPC_SUSPENDED = 11;
 
     public const RNT_REQ_PENDING = 12;
-    public const RNT_REQ_ACCEPTED = 13;
+    public const RNT_AWAITING_PAYMENT = 13;
     public const RNT_REQ_REJECTED = 14;
     public const RNT_REQ_CANCELLED = 15;
 

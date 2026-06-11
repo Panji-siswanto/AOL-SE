@@ -143,7 +143,7 @@
                 <div class="bg-white p-6 sm:p-8 rounded-[2rem] border border-gray-200 shadow-xl shadow-gray-100/50">
                     <h3 class="text-sm font-black uppercase tracking-wider text-gray-400 mb-6 border-b border-gray-100 pb-4">Financial Summary</h3>
                     
-                    {{-- 🔥 FIXED: Removed Old Pricing relation, replaced with available rates --}}
+                    {{--  FIXED: Removed Old Pricing relation, replaced with available rates --}}
                     <div class="space-y-4 mb-8">
                         <div class="flex justify-between items-center border-b border-gray-100 pb-4 mb-4">
                             <span class="text-[10px] font-black uppercase tracking-wider text-gray-400">Configured Rates</span>

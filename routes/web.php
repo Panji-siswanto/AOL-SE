@@ -39,6 +39,9 @@ Route::middleware(['auth', 'verified'])->prefix('rents')->name('rents.')->group(
     Route::post('/{rentRequest}/finish/request', [RentRequestController::class, 'requestFinish'])->name('finish.request');
     Route::post('/{rentRequest}/finish/approve', [RentRequestController::class, 'approveFinish'])->name('finish.approve');
     Route::post('/{rentRequest}/finish/reject', [RentRequestController::class, 'rejectFinish'])->name('finish.reject');
+
+    //payment
+    Route::post('/{rentRequest}/pay', [RentRequestController::class, 'pay'])->name('pay');
 });
 
 // Accounts

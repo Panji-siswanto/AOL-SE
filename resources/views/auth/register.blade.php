@@ -196,7 +196,6 @@
                                     };
                                 });
 
-                            // Deduplicate by Country NAME (Allows US and Canada to both safely exist with +1)
                             let seenNames = new Set();
                             let uniqueCountries = [];
                             
@@ -207,10 +206,8 @@
                                 }
                             });
 
-                            // Alphabetical sorting
                             uniqueCountries.sort((a, b) => a.name.localeCompare(b.name));
 
-                            // Force Indonesia to the top of the array
                             const idIndex = uniqueCountries.findIndex(c => c.name === 'Indonesia');
                             if (idIndex > -1) {
                                 const id = uniqueCountries.splice(idIndex, 1)[0];
@@ -223,7 +220,6 @@
                         })
                         .catch(err => console.error('Failed to load API country data', err));
 
-                    // Watch the search input to instantly filter the list
                     this.$watch('search', value => {
                         if (value === '') {
                             this.filteredCountries = this.countries;
@@ -237,7 +233,6 @@
                     });
                 },
 
-                // Click handler for dropdown items
                 selectCountry(country) {
                     this.selectedCountry = country;
                     this.open = false;

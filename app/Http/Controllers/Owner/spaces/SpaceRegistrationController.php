@@ -74,7 +74,6 @@ class SpaceRegistrationController extends Controller
         return response()->json(['status' => 'success']);
     }
 
-    // Helpers
     private function handleUserVerificationIfNecessary($request, $user)
     {
         $pendingStatus = Status::where('code', 'usr_verify_pending')->value('id');

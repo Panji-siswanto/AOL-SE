@@ -19,7 +19,6 @@ class SpaceController extends Controller {
         $activeTab = $request->input('tab', 'live');
         $ownerId = Auth::id();
 
-        // Fetch Registrations
         $regQuery = SpaceRegistration::with(['location', 'status'])->where('owner_id', $ownerId);
         if ($activeTab === 'applications') {
             $regQuery->search($request->search)->withStatus($request->status);
@@ -29,7 +28,6 @@ class SpaceController extends Controller {
         }
         $registrations = $regQuery->get();
 
-        // Fetch Spaces
         $spcQuery = Space::with(['location', 'status'])->where('owner_id', $ownerId);
         if ($activeTab === 'live') {
             if ($request->filled('search')) $spcQuery->where('name', 'like', "%{$request->search}%");
@@ -96,7 +94,6 @@ class SpaceController extends Controller {
         return back()->with('success', 'Status updated successfully.');
     }
 
-    // Helpers 
     private function authorizeOwner(Space $space) {
         if ($space->owner_id !== Auth::id()) abort(403);
     }

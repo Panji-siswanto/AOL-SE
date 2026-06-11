@@ -28,6 +28,7 @@ class RentRequestSeeder extends Seeder
         $msgDeclineReason = Status::where('code', 'msg_decline_reason')->value('id');
         $msgReschedule = Status::where('code', 'msg_reschedule_proposal')->value('id');
         $msgFinishReq = Status::where('code', 'msg_finish_request')->value('id');
+        $msgFinishRejected = Status::where('code', 'msg_finish_rejected')->value('id');
 
         $renter = User::where('email', 'renter@lapak.in')->first();
         $owner1 = User::where('email', 'owner1@lapak.in')->first();
@@ -215,6 +216,7 @@ class RentRequestSeeder extends Seeder
             RentMessage::create(['request_id' => $req10->id, 'sender_id' => $renter->id, 'type_id' => $msgApplication, 'message' => "3 Month lease please."]);
             RentMessage::create(['request_id' => $req10->id, 'sender_id' => $owner3->id, 'type_id' => $msgApproveNote, 'message' => "Approved."]);
             
+            // Renter requests to finish early today!
             RentMessage::create(['request_id' => $req10->id, 'sender_id' => $renter->id, 'type_id' => $msgFinishReq, 'message' => "Hi Owner, my business is relocating early. Can we terminate the contract at the end of this week?"]);
         }
 
@@ -234,6 +236,52 @@ class RentRequestSeeder extends Seeder
                 'renter_id' => $renter->id, 'start_date' => $req11->start_date, 'end_date' => $req11->end_date, 'status_id' => $rntCompleted
             ]);
             RentMessage::create(['request_id' => $req11->id, 'sender_id' => $renter->id, 'type_id' => $msgApplication, 'message' => "Short pop-up event."]);
+        }
+
+        //  Scenario 12: Owner Rejected Renter's Early Finish Request
+        $space12 = Space::where('name', 'Booth Pameran Mal Taman Anggrek')->first(); 
+        if ($space12) {
+            $price12 = 500000;
+            $req12 = RentRequest::create([
+                'renter_id' => $renter->id, 'space_id' => $space12->id,
+                'start_date' => Carbon::now()->subDays(5)->toDateString(), 'end_date' => Carbon::now()->addDays(25)->toDateString(), 
+                'visit_date' => null, 'total_price' => $price12 * 30, 
+                'price_breakdown' => ['daily' => ['qty' => 30, 'unit_price' => $price12, 'subtotal' => $price12 * 30]], 'status_id' => $rntOngoing,
+            ]);
+            Rent::create([
+                'request_id' => $req12->id, 'space_id' => $space12->id, 'space_name' => $space12->name, 'price' => $price12 * 30, 'pricing_type' => 'dynamic_combination',
+                'space_length' => 9.0, 'space_width' => null, 'space_area' => 9.0, 'space_address' => $space12->location->address, 'space_latitude' => $space12->location->latitude, 'space_longitude' => $space12->location->longitude,
+                'renter_id' => $renter->id, 'start_date' => $req12->start_date, 'end_date' => $req12->end_date, 'status_id' => $rntOngoing
+            ]);
+            RentMessage::create(['request_id' => $req12->id, 'sender_id' => $renter->id, 'type_id' => $msgApplication, 'message' => "Booking for the month!"]);
+            RentMessage::create(['request_id' => $req12->id, 'sender_id' => $owner1->id, 'type_id' => $msgApproveNote, 'message' => "Confirmed."]);
+            
+            // Renter requests finish
+            RentMessage::create(['request_id' => $req12->id, 'sender_id' => $renter->id, 'type_id' => $msgFinishReq, 'message' => "Hi, I miscalculated my stock. Can I end the lease today?"]);
+            // Owner REJECTS
+            RentMessage::create(['request_id' => $req12->id, 'sender_id' => $owner1->id, 'type_id' => $msgFinishRejected, 'message' => "Sorry, as per our contract, I cannot accept early terminations. You must fulfill the remaining days."]);
+        }
+
+        //  Scenario 13: Renter Rejected Owner's Early Finish Request
+        $space13 = Space::where('name', 'Foodcourt PIK 2')->first(); 
+        if ($space13) {
+            $price13 = 5000000;
+            $req13 = RentRequest::create([
+                'renter_id' => $renter->id, 'space_id' => $space13->id,
+                'start_date' => Carbon::now()->subMonths(2)->toDateString(), 'end_date' => Carbon::now()->addMonths(4)->toDateString(), 
+                'visit_date' => null, 'total_price' => $price13 * 6, 
+                'price_breakdown' => ['monthly' => ['qty' => 6, 'unit_price' => $price13, 'subtotal' => $price13 * 6]], 'status_id' => $rntOngoing,
+            ]);
+            Rent::create([
+                'request_id' => $req13->id, 'space_id' => $space13->id, 'space_name' => $space13->name, 'price' => $price13 * 6, 'pricing_type' => 'dynamic_combination',
+                'space_length' => null, 'space_width' => null, 'space_area' => 12.0, 'space_address' => $space13->location->address, 'space_latitude' => $space13->location->latitude, 'space_longitude' => $space13->location->longitude,
+                'renter_id' => $renter->id, 'start_date' => $req13->start_date, 'end_date' => $req13->end_date, 'status_id' => $rntOngoing
+            ]);
+            RentMessage::create(['request_id' => $req13->id, 'sender_id' => $renter->id, 'type_id' => $msgApplication, 'message' => "Securing this spot for 6 months!"]);
+            RentMessage::create(['request_id' => $req13->id, 'sender_id' => $owner1->id, 'type_id' => $msgApproveNote, 'message' => "Welcome to PIK 2!"]);
+            
+            RentMessage::create(['request_id' => $req13->id, 'sender_id' => $owner1->id, 'type_id' => $msgFinishReq, 'message' => "Hello, management is doing an emergency renovation of the foodcourt starting next week. I need to terminate the contract early."]);
+            RentMessage::create(['request_id' => $req13->id, 'sender_id' => $renter->id, 'type_id' => $msgFinishRejected, 'message' => "I cannot afford to move right now as I have pre-ordered stock. I need to stay for the agreed term."]);
         }
 
         $this->command->info('Rent Requests and Scenarios seeded successfully!');

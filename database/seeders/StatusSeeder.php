@@ -25,7 +25,7 @@ class StatusSeeder extends Seeder
             ['context' => 'spaces', 'code' => 'spc_suspended', 'name' => 'Suspended (Admin Action)'],
 
             ['context' => 'rent_req', 'code' => 'rnt_req_pending', 'name' => 'Pending'],
-            ['context' => 'rent_req', 'code' => 'rnt_req_accepted', 'name' => 'Accepted'],
+            ['context' => 'rent_req', 'code' => 'rnt_awaiting_payment', 'name' => 'Awaiting Payment'], 
             ['context' => 'rent_req', 'code' => 'rnt_req_rejected', 'name' => 'Rejected'],
             ['context' => 'rent_req', 'code' => 'rnt_req_cancelled', 'name' => 'Cancelled'],
 
