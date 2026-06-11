@@ -9,7 +9,7 @@ use App\Models\Space;
 use App\Models\SpaceRegistration;
 use App\Models\Status;
 use App\Models\User;
-use App\Models\Rent;          // Added Rent for Contract Activation
+use App\Models\Rent;          
 use App\Models\RentRequest;   
 use App\Models\RentMessage;  
 use App\Models\RentReschedule; 
@@ -31,7 +31,6 @@ class MarketplaceSeeder extends Seeder
         $spcAvailable = Status::where('code', 'spc_available')->value('id');
         $verifiedStatus = Status::where('code', 'usr_verified')->value('id');
         
-        // Rent Statuses (Bypassed rnt_req_accepted)
         $rntReqPending = Status::where('code', 'rnt_req_pending')->value('id');
         $rntReqRejected = Status::where('code', 'rnt_req_rejected')->value('id');
         $rntReqCancelled = Status::where('code', 'rnt_req_cancelled')->value('id');

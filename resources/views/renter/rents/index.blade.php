@@ -17,7 +17,7 @@
         <div class="mb-8">
             <div class="flex space-x-1 bg-gray-100/80 p-1 rounded-2xl w-full sm:w-fit mb-6 overflow-x-auto scrollbar-hide">
                 <a href="{{ route('rents.index', ['status' => 'all', 'sort' => $currentSort, 'search' => request('search')]) }}" class="px-6 py-2.5 text-sm font-bold rounded-xl transition-all whitespace-nowrap {{ $currentStatus === 'all' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50' }}">All</a>
-                <a href="{{ route('rents.index', ['status' => 'action_required', 'sort' => $currentSort, 'search' => request('search')]) }}" class="px-6 py-2.5 text-sm font-bold rounded-xl transition-all whitespace-nowrap {{ $currentStatus === 'action_required' ? 'bg-orange-500 text-white shadow-sm' : 'text-orange-600 hover:text-orange-700 hover:bg-orange-100/50' }}">Action Required</a>
+                <a href="{{ route('rents.index', ['status' => 'action_required', 'sort' => $currentSort, 'search' => request('search')]) }}" class="px-6 py-2.5 text-sm font-bold rounded-xl transition-all whitespace-nowrap {{ $currentStatus === 'action_required' ? 'bg-orange-500 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50' }}">Action Required</a>
                 <a href="{{ route('rents.index', ['status' => 'rnt_req_pending', 'sort' => $currentSort, 'search' => request('search')]) }}" class="px-6 py-2.5 text-sm font-bold rounded-xl transition-all whitespace-nowrap {{ $currentStatus === 'rnt_req_pending' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50' }}">Pending</a>
                 <a href="{{ route('rents.index', ['status' => 'rnt_awaiting_payment', 'sort' => $currentSort, 'search' => request('search')]) }}" class="px-6 py-2.5 text-sm font-bold rounded-xl transition-all whitespace-nowrap {{ $currentStatus === 'rnt_awaiting_payment' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50' }}">Waiting for Payment</a>
                 <a href="{{ route('rents.index', ['status' => 'rnt_ongoing', 'sort' => $currentSort, 'search' => request('search')]) }}" class="px-6 py-2.5 text-sm font-bold rounded-xl transition-all whitespace-nowrap {{ $currentStatus === 'rnt_ongoing' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50' }}">Ongoing</a>
@@ -65,32 +65,43 @@
                         $msgFinishReqId = \App\Models\Status::where('code', 'msg_finish_request')->value('id');
                         $msgFinishRejectedId = \App\Models\Status::where('code', 'msg_finish_rejected')->value('id');
 
-                        $latestMessageAll = $request->messages->sortByDesc('id')->first();
-                        $latestSenderId = $latestMessageAll ? $latestMessageAll->sender_id : $request->renter_id;
-                        
-                        $latestReschedule = $request->reschedules->sortByDesc('id')->first();
-                        $isPendingReschedule = ($request->status_id == $pendingId && $latestReschedule) ? true : false;
+                        $latestReschedule = $request->reschedules->sortByDesc('created_at')->first();
+                        $latestMessageAll = $request->messages->sortByDesc('created_at')->first();
 
+                        $latestSenderId = $request->renter_id;
+                        $latestTime = $request->created_at;
+
+                        if ($latestMessageAll && $latestMessageAll->created_at->gte($latestTime)) {
+                            $latestSenderId = $latestMessageAll->sender_id;
+                            $latestTime = $latestMessageAll->created_at;
+                        }
+
+                        if ($latestReschedule && $latestReschedule->created_at->gte($latestTime)) {
+                            $latestSenderId = $latestReschedule->sender_id;
+                            $latestTime = $latestReschedule->created_at;
+                        }
+
+                        $isPendingReschedule = ($request->status_id == $pendingId && $latestReschedule) ? true : false;
                         $isMyTurn = $request->status_id == $pendingId && $latestSenderId !== Auth::id();
-                        $waitingForOther = $request->status_id == $pendingId && $latestSenderId === Auth::id();
+                        $waitingForOwner = $request->status_id == $pendingId && $latestSenderId === Auth::id();
 
                         $pendingFinishMsg = null;
                         $rejectedFinishMsg = null;
                         $isMyTurnFinish = false;
-                        $waitingForOtherFinish = false;
+                        $waitingForOwnerFinish = false;
 
                         if ($request->status_id == $ongoingId) {
                             $latestFinishStatusMsg = $request->messages->whereIn('type_id', [
                                 $msgFinishReqId, 
                                 \App\Models\Status::where('code', 'msg_finish_accepted')->value('id'), 
                                 $msgFinishRejectedId
-                            ])->sortByDesc('id')->first();
+                            ])->sortByDesc('created_at')->first();
 
                             if ($latestFinishStatusMsg) {
                                 if ($latestFinishStatusMsg->type_id == $msgFinishReqId) {
                                     $pendingFinishMsg = $latestFinishStatusMsg;
                                     $isMyTurnFinish = $pendingFinishMsg->sender_id !== Auth::id();
-                                    $waitingForOtherFinish = $pendingFinishMsg->sender_id === Auth::id();
+                                    $waitingForOwnerFinish = $pendingFinishMsg->sender_id === Auth::id();
                                 } elseif ($latestFinishStatusMsg->type_id == $msgFinishRejectedId) {
                                     $rejectedFinishMsg = $latestFinishStatusMsg; 
                                 }
@@ -109,6 +120,14 @@
                         $msgApproveId = \App\Models\Status::where('code', 'msg_approval_note')->value('id');
                         $msgDeclineId = \App\Models\Status::where('code', 'msg_decline_reason')->value('id');
                         
+                        $propStart = $isPendingReschedule ? $latestReschedule->proposed_start_date : $request->start_date;
+                        $propEnd = $isPendingReschedule ? $latestReschedule->proposed_end_date : $request->end_date;
+                        $propVisit = $isPendingReschedule ? $latestReschedule->proposed_visit_date : $request->visit_date;
+
+                        $startDateFormatted = $propStart ? \Carbon\Carbon::parse($propStart)->format('Y-m-d') : '';
+                        $endDateFormatted = $propEnd ? \Carbon\Carbon::parse($propEnd)->format('Y-m-d') : '';
+                        $visitDateFormatted = $propVisit ? \Carbon\Carbon::parse($propVisit)->format('Y-m-d') : '';
+
                         $displayPrice = $isPendingReschedule ? $latestReschedule->proposed_total_price : $request->total_price;
                         $displayBreakdown = $isPendingReschedule ? $latestReschedule->price_breakdown : $request->price_breakdown;
 
@@ -144,7 +163,7 @@
                                         <span class="bg-orange-500 text-white px-3 py-1.5 rounded-lg text-[10px] font-black shadow-sm uppercase tracking-wider">Action Required: Reschedule</span>
                                     @elseif($isMyTurn && !$isPendingReschedule)
                                         <span class="bg-orange-500 text-white px-3 py-1.5 rounded-lg text-[10px] font-black shadow-sm uppercase tracking-wider">Action Required: Reply</span>
-                                    @elseif($waitingForOther || $waitingForOtherFinish) 
+                                    @elseif($waitingForOwner || $waitingForOwnerFinish) 
                                         <span class="bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg text-[10px] font-black border border-blue-100 uppercase tracking-wider">Waiting for Owner</span>
                                     @elseif($request->status_id == $ongoingId) 
                                         <span class="bg-blue-500 text-white px-3 py-1.5 rounded-lg text-[10px] font-black shadow-sm uppercase tracking-wider">Ongoing</span>
@@ -163,8 +182,8 @@
                             <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-gray-50/80 rounded-xl p-3 border border-gray-100/80 mb-3">
                                 <div><p class="text-[9px] font-black uppercase text-gray-400 mb-0.5">Price</p><p class="text-xs font-bold text-teal-600">Rp {{ number_format($displayPrice, 0, ',', '.') }}</p></div>
                                 <div><p class="text-[9px] font-black uppercase text-gray-400 mb-0.5">Duration</p><p class="text-xs font-bold text-gray-900 truncate">{{ $durationString }}</p></div>
-                                <div><p class="text-[9px] font-black uppercase text-gray-400 mb-0.5">Start</p><p class="text-xs font-bold text-gray-900">{{ \Carbon\Carbon::parse($isPendingReschedule ? $latestReschedule->proposed_start_date : $request->start_date)->format('M d') }}</p></div>
-                                <div><p class="text-[9px] font-black uppercase text-gray-400 mb-0.5">End</p><p class="text-xs font-bold text-gray-900">{{ \Carbon\Carbon::parse($isPendingReschedule ? $latestReschedule->proposed_end_date : $request->end_date)->format('M d') }}</p></div>
+                                <div><p class="text-[9px] font-black uppercase text-gray-400 mb-0.5">Start</p><p class="text-xs font-bold text-gray-900">{{ $propStart ? \Carbon\Carbon::parse($propStart)->format('M d') : 'N/A' }}</p></div>
+                                <div><p class="text-[9px] font-black uppercase text-gray-400 mb-0.5">End</p><p class="text-xs font-bold text-gray-900">{{ $propEnd ? \Carbon\Carbon::parse($propEnd)->format('M d') : 'N/A' }}</p></div>
                             </div>
 
                             <div class="flex justify-between items-center">
@@ -206,16 +225,16 @@
                                                 </div>
                                                 <div class="bg-gray-50 p-6 rounded-[2rem] border border-gray-100">
                                                     <p class="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1">Start Date</p>
-                                                    <p class="text-sm font-bold text-gray-900 mt-1">{{ \Carbon\Carbon::parse($isPendingReschedule ? $latestReschedule->proposed_start_date : $request->start_date)->format('M d, Y') }}</p>
+                                                    <p class="text-sm font-bold text-gray-900 mt-1">{{ $propStart ? \Carbon\Carbon::parse($propStart)->format('M d, Y') : 'N/A' }}</p>
                                                 </div>
                                                 <div class="bg-gray-50 p-6 rounded-[2rem] border border-gray-100">
                                                     <p class="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1">End Date</p>
-                                                    <p class="text-sm font-bold text-gray-900 mt-1">{{ \Carbon\Carbon::parse($isPendingReschedule ? $latestReschedule->proposed_end_date : $request->end_date)->format('M d, Y') }}</p>
+                                                    <p class="text-sm font-bold text-gray-900 mt-1">{{ $propEnd ? \Carbon\Carbon::parse($propEnd)->format('M d, Y') : 'N/A' }}</p>
                                                 </div>
-                                                @if($request->visit_date || ($isPendingReschedule && $latestReschedule->proposed_visit_date))
+                                                @if($propVisit)
                                                     <div class="bg-gray-50 p-6 rounded-[2rem] border border-gray-100 col-span-2">
                                                         <p class="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1">Scheduled Visit Date</p>
-                                                        <p class="text-sm font-bold text-gray-900 mt-1">{{ \Carbon\Carbon::parse($isPendingReschedule ? $latestReschedule->proposed_visit_date : $request->visit_date)->format('M d, Y') }}</p>
+                                                        <p class="text-sm font-bold text-gray-900 mt-1">{{ \Carbon\Carbon::parse($propVisit)->format('M d, Y') }}</p>
                                                     </div>
                                                 @endif
                                             </div>
@@ -341,14 +360,14 @@
                                                     @if($isMyTurnFinish)
                                                         <button @click.prevent="showDetails = false; setTimeout(() => $dispatch('open-accept-finish-modal-{{ $request->id }}'), 150)" class="w-full bg-orange-500 hover:bg-orange-600 text-white py-3.5 rounded-2xl font-black text-sm transition shadow-lg active:scale-95">Accept Early Finish</button>
                                                         <button @click.prevent="showDetails = false; setTimeout(() => $dispatch('open-reject-finish-modal-{{ $request->id }}'), 150)" class="w-full bg-white text-red-500 border border-red-100 py-3.5 rounded-2xl font-black text-sm transition mt-2">Reject Request</button>
-                                                    @elseif($waitingForOtherFinish)
+                                                    @elseif($waitingForOwnerFinish)
                                                         <button class="w-full bg-gray-100 text-gray-400 py-3.5 rounded-2xl font-bold text-sm cursor-not-allowed" disabled>Waiting for Owner Response...</button>
                                                     @else
                                                         <button @click.prevent="showDetails = false; setTimeout(() => $dispatch('open-request-finish-modal-{{ $request->id }}'), 150)" class="w-full bg-red-50 hover:bg-red-100 text-red-600 py-3.5 rounded-2xl font-black text-sm transition active:scale-95">Request Early Finish</button>
                                                         <button @click="showDetails = false" class="w-full bg-gray-900 hover:bg-black text-white py-3.5 rounded-2xl font-black text-sm transition mt-2">Close</button>
                                                     @endif
                                                 @elseif($isMyTurn && $isPendingReschedule)
-                                                    <button @click.prevent="showDetails = false; setTimeout(() => $dispatch('open-accept-modal-{{ $request->id }}'), 150)" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-2xl font-black text-sm transition shadow-lg shadow-blue-600/20 active:scale-95">Accept Dates</button>
+                                                    <button @click.prevent="showDetails = false; setTimeout(() => $dispatch('open-accept-modal-{{ $request->id }}'), 150)" class="w-full bg-teal-600 hover:bg-teal-700 text-white py-3.5 rounded-2xl font-black text-sm transition shadow-lg shadow-teal-600/20 active:scale-95">Accept Dates</button>
                                                     <button @click.prevent="showDetails = false; setTimeout(() => $dispatch('open-counter-modal-{{ $request->id }}'), 150)" class="w-full bg-white text-blue-700 border-2 border-blue-200 hover:border-blue-300 hover:bg-blue-50 py-3.5 rounded-2xl font-black text-sm transition shadow-sm active:scale-95">Propose New</button>
                                                     <button @click.prevent="showDetails = false; setTimeout(() => $dispatch('open-cancel-modal-{{ $request->id }}'), 150)" class="w-full bg-white text-red-600 border border-red-200 hover:bg-red-50 py-3.5 rounded-2xl font-black text-sm transition active:scale-95 mt-2">Decline & Cancel</button>
                                                 @elseif($request->status_id == $pendingId)
@@ -489,9 +508,9 @@
                         @if($isMyTurn)
                         <div x-data="{ 
                                 showCounter: false, showNote: false,
-                                startDate: '{{ $isPendingReschedule ? $latestReschedule->proposed_start_date : $request->start_date }}', 
-                                endDate: '{{ $isPendingReschedule ? $latestReschedule->proposed_end_date : $request->end_date }}', 
-                                visitDate: '{{ $isPendingReschedule ? $latestReschedule->proposed_visit_date : $request->visit_date }}',
+                                startDate: '{{ $startDateFormatted }}', 
+                                endDate: '{{ $endDateFormatted }}', 
+                                visitDate: '{{ $visitDateFormatted }}',
                                 dailyRate: {{ $dailyRate }}, weeklyRate: {{ $weeklyRate }}, monthlyRate: {{ $monthlyRate }},
                                 get durationText() {
                                     if(!this.startDate || !this.endDate) return '0 Days';

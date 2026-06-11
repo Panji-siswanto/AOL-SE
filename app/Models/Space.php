@@ -59,7 +59,7 @@ class Space extends Model
         
         return $this->rentRequests()
             ->where('renter_id', Auth::id())
-            ->whereIn('status_id', [Status::RNT_REQ_PENDING, Status::RNT_REQ_ACCEPTED])
+            ->whereIn('status_id', [Status::RNT_REQ_PENDING, Status::RNT_AWAITING_PAYMENT])
             ->exists();
     }
 

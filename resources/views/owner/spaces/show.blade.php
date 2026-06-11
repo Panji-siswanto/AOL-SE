@@ -3,7 +3,6 @@
 
     <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8" x-data="{ globalPreview: null }">
         
-        {{-- SOFT PREVIEW BANNER --}}
         <div class="mb-8 bg-indigo-50 border border-indigo-100 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center text-lg shadow-inner">👁️</div>
@@ -22,8 +21,12 @@
                 <span class="text-xl">✅</span> {{ session('success') }}
             </div>
         @endif
+        @if(session('error'))
+            <div class="mb-8 p-4 bg-red-50 border border-red-100 rounded-2xl text-red-900 text-sm font-bold shadow-sm flex items-center gap-3">
+                <span class="text-xl">⚠️</span> {{ session('error') }}
+            </div>
+        @endif
 
-        {{-- Header Section --}}
         <div class="mb-6 flex justify-between items-start">
             <div>
                 <h1 class="text-4xl font-black text-gray-900 tracking-tight mb-2">{{ $space->name }}</h1>
@@ -35,7 +38,6 @@
             </div>
         </div>
 
-        {{-- Photo Gallery Slider (Matching Attachment Layout) --}}
         @php 
             $photos = $space->photos->count() > 0 ? $space->photos : $space->registration->photos; 
             $coverUrl = $photos->count() > 0 ? asset('storage/' . ($photos->where('is_primary', true)->first()->file_path ?? $photos->first()->file_path)) : '';
@@ -51,7 +53,6 @@
             </div>
 
             @if($photos->count() > 0)
-                {{-- Main Active Image --}}
                 <div class="w-full h-[350px] md:h-[450px] rounded-3xl overflow-hidden relative mb-4 bg-gray-100 group cursor-pointer" @click="globalPreview = { url: activeImageUrl, type: 'image' }">
                     <img :src="activeImageUrl" class="w-full h-full object-cover transition duration-500 group-hover:scale-105">
                     <div class="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition"></div>
@@ -60,7 +61,6 @@
                     </div>
                 </div>
 
-                {{-- Interactive Thumbnails --}}
                 <div class="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
                     @foreach($photos->sortByDesc('is_primary') as $photo)
                         @php $photoUrl = asset('storage/' . $photo->file_path); @endphp
@@ -89,10 +89,8 @@
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-12">
             
-            {{-- Main Content (Left Column) --}}
             <div class="lg:col-span-2 space-y-12">
                 
-                {{-- Host Info --}}
                 <div class="flex items-center gap-4 pb-8 border-b border-gray-100">
                     <div class="w-16 h-16 bg-teal-100 text-teal-700 rounded-full flex items-center justify-center text-2xl font-black shadow-inner">
                         {{ substr($space->owner->name, 0, 1) }}
@@ -103,7 +101,6 @@
                     </div>
                 </div>
 
-                {{-- About This Space --}}
                 <div class="pb-8 border-b border-gray-100">
                     <h3 class="text-xl font-black text-gray-900 mb-4">About this space</h3>
                     <div class="prose prose-gray max-w-none text-gray-600 font-medium leading-relaxed whitespace-pre-line">
@@ -111,14 +108,12 @@
                     </div>
                 </div>
 
-                {{-- Map --}}
                 <div>
                     <h3 class="text-xl font-black text-gray-900 mb-4">Location</h3>
                     <div id="public-map" class="w-full h-[400px] rounded-[2rem] border border-gray-200 shadow-sm z-0"></div>
                 </div>
             </div>
 
-            {{-- Sticky Owner Control Widget (Right Column) --}}
             <div class="relative">
                 <div class="sticky top-8 bg-white p-8 rounded-[2rem] border border-gray-200 shadow-xl shadow-gray-100/50">
                     
@@ -127,8 +122,12 @@
                         <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider {{ $space->status->code === 'spc_available' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-gray-100 text-gray-600 border border-gray-200' }}">
                             @if($space->status->code === 'spc_available')
                                 <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Live on Marketplace
+                            @elseif($space->status->code === 'spc_paused')
+                                <span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span> Paused
+                            @elseif($space->status->code === 'spc_unlisted')
+                                <span class="w-1.5 h-1.5 rounded-full bg-red-400"></span> Unlisted
                             @else
-                                <span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span> Hidden
+                                <span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span> {{ $space->status->name }}
                             @endif
                         </span>
                     </div>
@@ -148,57 +147,63 @@
                         @endforeach
                     </div>
 
-                   {{-- OWNER ACTIONS --}}
+                    {{-- OWNER ACTIONS --}}
                     <div class="space-y-3 pt-6 border-t border-gray-100">
-                        <a href="{{ route('owner.spaces.edit', $space->id) }}" class="w-full bg-teal-600 hover:bg-teal-700 text-white text-center py-4 rounded-2xl font-black transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-teal-600/30">
-                            ✎ Edit Space Details
-                        </a>
-                        
-                        @if($space->status->code === 'spc_available')
-                            <form action="{{ route('owner.spaces.status.update', $space->id) }}" method="POST">
-                                @csrf @method('PATCH')
-                                <input type="hidden" name="action" value="pause">
-                                <button type="submit" class="w-full bg-white border-2 border-gray-200 hover:border-gray-900 hover:bg-gray-900 hover:text-white text-gray-900 text-center py-3.5 rounded-2xl font-black transition-all active:scale-95 flex items-center justify-center gap-2">
-                                    ⏸️ Pause Listing
-                                </button>
-                            </form>
-                        @elseif($space->status->code === 'spc_paused')
-                            <form action="{{ route('owner.spaces.status.update', $space->id) }}" method="POST">
-                                @csrf @method('PATCH')
-                                <input type="hidden" name="action" value="unpause">
-                                <button type="submit" class="w-full bg-emerald-50 hover:bg-emerald-500 hover:text-white text-emerald-600 border border-emerald-100 text-center py-3.5 rounded-2xl font-black transition-all active:scale-95 flex items-center justify-center gap-2">
-                                    ▶️ Republish Space
-                                </button>
-                            </form>
-                        @endif
-
-                        @php
-                            // TODO: Replace 'false' with the actual database check once the Rent is built.
-                            // $hasOngoingRent = $space->rents()->whereHas('status', fn($q) => $q->whereIn('code', ['rnt_req_pending', 'rnt_ongoing']))->exists();
-                            
-                            $hasOngoingRent = false; 
-                        @endphp
-
-                        @if(!$hasOngoingRent)
-                            <form action="{{ route('owner.spaces.status.update', $space->id) }}" method="POST" onsubmit="return confirm('Are you sure you want to permanently unlist this space? This cannot be undone easily.');">
-                                @csrf @method('PATCH')
-                                <input type="hidden" name="action" value="unlist">
-                                <button type="submit" class="w-full mt-2 bg-red-50 hover:bg-red-500 hover:text-white text-red-600 border border-red-100 text-center py-3.5 rounded-2xl font-black transition-all active:scale-95 flex items-center justify-center gap-2">
-                                    🗑️ Unlist Property
-                                </button>
-                            </form>
-                        @else
-                            <div class="mt-4 p-4 bg-orange-50 border border-orange-100 rounded-2xl text-center shadow-sm">
-                                <p class="text-[10px] font-black text-orange-600 uppercase tracking-wider flex items-center justify-center gap-1"><span>⚠️</span> Cannot Unlist</p>
-                                <p class="text-xs text-orange-800 font-medium mt-1">This property has active or pending rents. You must resolve them before unlisting.</p>
+                        @if($space->status->code === 'spc_unlisted')
+                            <div class="bg-red-50 border border-red-100 p-6 rounded-2xl text-center shadow-sm">
+                                <span class="text-3xl mb-3 block">🚫</span>
+                                <h4 class="font-black text-gray-900 mb-1">Permanently Unlisted</h4>
+                                <p class="text-xs font-medium text-gray-600">This property has been permanently removed from the marketplace. It cannot be edited or republished.</p>
                             </div>
+                        @else
+                            {{-- Edit Space button stays as long as it's not unlisted --}}
+                            <a href="{{ route('owner.spaces.edit', $space->id) }}" class="w-full bg-teal-600 hover:bg-teal-700 text-white text-center py-4 rounded-2xl font-black transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-teal-600/30">
+                                ✎ Edit Space Details
+                            </a>
+                            
+                            @if($space->status->code === 'spc_available')
+                                <form action="{{ route('owner.spaces.status.update', $space->id) }}" method="POST">
+                                    @csrf @method('PATCH')
+                                    <input type="hidden" name="action" value="pause">
+                                    <button type="submit" class="w-full bg-white border-2 border-gray-200 hover:border-gray-900 hover:bg-gray-900 hover:text-white text-gray-900 text-center py-3.5 rounded-2xl font-black transition-all active:scale-95 flex items-center justify-center gap-2">
+                                        ⏸️ Pause Listing
+                                    </button>
+                                </form>
+                            @elseif($space->status->code === 'spc_paused')
+                                <form action="{{ route('owner.spaces.status.update', $space->id) }}" method="POST">
+                                    @csrf @method('PATCH')
+                                    <input type="hidden" name="action" value="unpause">
+                                    <button type="submit" class="w-full bg-emerald-50 hover:bg-emerald-500 hover:text-white text-emerald-600 border border-emerald-100 text-center py-3.5 rounded-2xl font-black transition-all active:scale-95 flex items-center justify-center gap-2">
+                                        ▶️ Republish Space
+                                    </button>
+                                </form>
+                            @endif
+
+                            @php
+                                $activeStatuses = \App\Models\Status::whereIn('code', ['rnt_req_pending', 'rnt_awaiting_payment', 'rnt_ongoing'])->pluck('id');
+                                $hasOngoingRent = \App\Models\RentRequest::where('space_id', $space->id)->whereIn('status_id', $activeStatuses)->exists();
+                            @endphp
+
+                            @if(!$hasOngoingRent)
+                                <form action="{{ route('owner.spaces.status.update', $space->id) }}" method="POST" onsubmit="return confirm('Are you sure you want to permanently unlist this space? This cannot be undone easily.');">
+                                    @csrf @method('PATCH')
+                                    <input type="hidden" name="action" value="unlist">
+                                    <button type="submit" class="w-full mt-2 bg-red-50 hover:bg-red-500 hover:text-white text-red-600 border border-red-100 text-center py-3.5 rounded-2xl font-black transition-all active:scale-95 flex items-center justify-center gap-2">
+                                        🗑️ Unlist Property
+                                    </button>
+                                </form>
+                            @else
+                                <div class="mt-4 p-4 bg-orange-50 border border-orange-100 rounded-2xl text-center shadow-sm">
+                                    <p class="text-[10px] font-black text-orange-600 uppercase tracking-wider flex items-center justify-center gap-1"><span>⚠️</span> Cannot Unlist</p>
+                                    <p class="text-xs text-orange-800 font-medium mt-1">This property has active or pending rents. You must resolve them before unlisting.</p>
+                                </div>
+                            @endif
                         @endif
                     </div>
                 </div>
             </div>
         </div>
 
-        {{-- Global Preview Modal --}}
         <div x-show="globalPreview !== null" x-cloak x-transition.opacity class="fixed inset-0 z-50 bg-black/95 backdrop-blur-sm flex items-center justify-center p-4" @click.self="globalPreview = null" @keydown.escape.window="globalPreview = null">
             <button type="button" @click="globalPreview = null" class="absolute top-6 right-6 text-white text-4xl hover:scale-110 transition z-10">&times;</button>
             <template x-if="globalPreview?.type === 'image'">
@@ -212,7 +217,6 @@
     
     <script>
         document.addEventListener('alpine:init', () => {
-            // Tiny handler for the Photo Slider
             Alpine.data('spaceGallery', (initialUrl) => ({
                 activeImageUrl: initialUrl
             }));

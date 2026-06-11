@@ -15,7 +15,7 @@ class DatabaseSeeder extends Seeder
             PricingTypeSeeder::class,
             UserSeeder::class,        
             SpaceSeeder::class,        
-            RentRequestSeeder::class, 
+            // RentRequestSeeder::class, 
         ]);
     }
 }

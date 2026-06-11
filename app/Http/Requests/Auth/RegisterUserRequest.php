@@ -13,26 +13,34 @@ class RegisterUserRequest extends FormRequest {
     }
 
     protected function prepareForValidation(): void {
-        $this->merge([
-            'email' => strtolower($this->email),
-            'phone' => ltrim($this->phone, '0'), 
-        ]);
+        if ($this->has('email')) {
+            $this->merge([
+                'email' => strtolower($this->email),
+            ]);
+        }
+        
+        if ($this->has('phone')) {
+            $this->merge([
+                'phone' => ltrim($this->phone, '0'), 
+            ]);
+        }
     }
 
     public function rules(): array {
         return [
             // User Details
-            'name'=> ['required', 'string', 'max:255'],
-            'username'=> ['required', 'string', 'max:255', 'unique:users,username', 'alpha_num'],
-            'email'=> ['required', 'string', 'email', 'max:255', 'unique:' . User::class],
+            'name'     => ['required', 'string', 'max:255'],
+            'username' => ['required', 'string', 'max:255', 'unique:users,username', 'alpha_num'],
+            
+            'email'    => ['required', 'string', 'email', 'max:255', 'unique:users,email'], 
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
 
             // Contact
-            'phone_code'=> ['nullable', 'string', 'max:5'],
-            'phone'=> ['nullable', 'string', 'max:20'],
+            'phone_code' => ['nullable', 'string', 'max:5'],
+            'phone'      => ['nullable', 'string', 'max:20'],
 
             // Verification Assets
-            'ktp' => ['required', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
+            'ktp'        => ['required', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
             'selfie_ktp' => ['required', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
         ];
     }

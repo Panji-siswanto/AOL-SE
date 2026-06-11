@@ -13,9 +13,10 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
-class SpaceController extends Controller {
-
-    public function index(Request $request) {
+class SpaceController extends Controller 
+{
+    public function index(Request $request) 
+    {
         $activeTab = $request->input('tab', 'live');
         $ownerId = Auth::id();
 
@@ -43,21 +44,33 @@ class SpaceController extends Controller {
         return view('owner.spaces.index', compact('registrations', 'spaces', 'activeTab'));
     }
 
-    public function show(Space $space) {
+    public function show(Space $space) 
+    {
         $this->authorizeOwner($space);
         $space->load(['location', 'status', 'registration.prices.pricingType', 'photos', 'registration.photos']);
         return view('owner.spaces.show', compact('space'));
     }
 
-    public function edit(Space $space) {
+    public function edit(Space $space) 
+    {
         $this->authorizeOwner($space);
+        
+        if ($space->status->code === 'spc_unlisted') {
+            return redirect()->route('owner.spaces.show', $space->id)->with('error', 'Unlisted spaces cannot be edited.');
+        }
+
         $pricingTypes = PricingType::all();
         $space->load(['location', 'registration.prices', 'photos', 'registration.photos']);
         return view('owner.spaces.edit', compact('space', 'pricingTypes'));
     }
 
-    public function update(Request $request, Space $space) {
+    public function update(Request $request, Space $space) 
+    {
         $this->authorizeOwner($space);
+
+        if ($space->status->code === 'spc_unlisted') {
+            return redirect()->route('owner.spaces.show', $space->id)->with('error', 'Unlisted spaces cannot be edited.');
+        }
 
         $request->validate([
             'name' => 'required|string|max:100',
@@ -84,9 +97,14 @@ class SpaceController extends Controller {
         }
     }
 
-    public function updateStatus(Request $request, Space $space) {
+    public function updateStatus(Request $request, Space $space) 
+    {
         $this->authorizeOwner($space);
         $request->validate(['action' => 'required|in:pause,unpause,unlist']);
+
+        if ($space->status->code === 'spc_unlisted') {
+            return redirect()->route('owner.spaces.show', $space->id)->with('error', 'This space is permanently unlisted and cannot be changed.');
+        }
 
         $codes = ['pause' => 'spc_paused', 'unpause' => 'spc_available', 'unlist' => 'spc_unlisted'];
         $space->update(['status_id' => Status::where('code', $codes[$request->action])->value('id')]);
@@ -94,15 +112,18 @@ class SpaceController extends Controller {
         return back()->with('success', 'Status updated successfully.');
     }
 
-    private function authorizeOwner(Space $space) {
+    private function authorizeOwner(Space $space) 
+    {
         if ($space->owner_id !== Auth::id()) abort(403);
     }
 
-    private function updateLocation(Space $space, Request $request) {
+    private function updateLocation(Space $space, Request $request) 
+    {
         $space->location->update($request->only(['city', 'province', 'address', 'latitude', 'longitude']));
     }
 
-    private function updateSpaceData(Space $space, Request $request) {
+    private function updateSpaceData(Space $space, Request $request) 
+    {
         $area = $request->dimension_type === 'exact' ? ($request->length * $request->width) : $request->area;
         $data = [
             'name' => $request->name, 
@@ -115,7 +136,8 @@ class SpaceController extends Controller {
         $space->registration->update($data);
     }
 
-    private function syncPricing(Space $space, array $pricing) {
+    private function syncPricing(Space $space, array $pricing) 
+    {
         $space->registration->prices()->delete();
         $basePrice = null;
 
@@ -128,7 +150,8 @@ class SpaceController extends Controller {
         if ($basePrice) $space->update(['price' => $basePrice]);
     }
 
-    private function manageGallery(Space $space, Request $request) {
+    private function manageGallery(Space $space, Request $request) 
+    {
         if ($request->filled('deleted_photos')) {
             $ids = array_filter(explode(',', $request->deleted_photos));
             if (!empty($ids)) {

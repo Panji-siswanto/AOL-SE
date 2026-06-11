@@ -32,7 +32,7 @@ class RentRequest extends Model
         'space.name',
         'space.location.city',
         'space.location.address',
-        'renter.name'
+        'renter.name' 
     ];
 
     protected $casts = [
@@ -86,10 +86,6 @@ class RentRequest extends Model
         };
     }
 
-    /**
-     * Override the Filterable trait's scopeWithStatus  
-     * to handle 'action_required' on rent index .
-     */
     public function scopeWithStatus($query, $statusName)
     {
         if (!$statusName || $statusName === 'all') {
@@ -105,31 +101,32 @@ class RentRequest extends Model
         $msgFinishAcceptedId = Status::where('code', 'msg_finish_accepted')->value('id');
         $msgFinishRejectedId = Status::where('code', 'msg_finish_rejected')->value('id');
 
+        $latestSenderSubquery = "
+            COALESCE(
+                (
+                    SELECT sender_id FROM (
+                        SELECT sender_id, created_at, 1 as action_type FROM rent_messages WHERE request_id = rent_requests.id
+                        UNION ALL
+                        SELECT sender_id, created_at, 2 as action_type FROM rent_reschedules WHERE rent_request_id = rent_requests.id
+                    ) AS combined_actions 
+                    ORDER BY created_at DESC, action_type DESC 
+                    LIMIT 1
+                ),
+                rent_requests.renter_id
+            )
+        ";
+
         if ($statusName === 'action_required') {
-            return $query->where(function ($q) use ($userId, $pendingId, $awaitingPaymentId, $ongoingId, $msgFinishReqId, $msgFinishAcceptedId, $msgFinishRejectedId) {
+            return $query->where(function ($q) use ($userId, $pendingId, $awaitingPaymentId, $ongoingId, $msgFinishReqId, $msgFinishAcceptedId, $msgFinishRejectedId, $latestSenderSubquery) {
                 
                 $q->orWhere(function ($sub) use ($userId, $awaitingPaymentId) {
                     $sub->where('status_id', $awaitingPaymentId)
                         ->where('renter_id', $userId);
                 });
 
-                $q->orWhere(function ($sub) use ($userId, $pendingId) {
+                $q->orWhere(function ($sub) use ($userId, $pendingId, $latestSenderSubquery) {
                     $sub->where('status_id', $pendingId)
-                        ->where(function ($negotiationGroup) use ($userId) {
-                            $negotiationGroup->whereHas('messages', function ($msgQ) use ($userId) {
-                                $msgQ->where('id', function ($latestMsgQ) {
-                                    $latestMsgQ->selectRaw('max(id)')
-                                               ->from('rent_messages')
-                                               ->whereColumn('request_id', 'rent_requests.id');
-                                })->where('sender_id', '!=', $userId);
-                            })
-                            ->orWhere(function ($noMsgGroup) use ($userId) {
-                                $noMsgGroup->doesntHave('messages')
-                                           ->whereHas('space', function ($spaceQ) use ($userId) {
-                                               $spaceQ->where('owner_id', $userId);
-                                           });
-                            });
-                        });
+                        ->whereRaw("($latestSenderSubquery) != ?", [$userId]);
                 });
 
                 $q->orWhere(function ($sub) use ($userId, $ongoingId, $msgFinishReqId, $msgFinishAcceptedId, $msgFinishRejectedId) {
@@ -149,21 +146,9 @@ class RentRequest extends Model
         }
 
         if ($statusName === 'rnt_req_pending') {
-            return $query->where(function ($q) use ($userId, $pendingId) {
+            return $query->where(function ($q) use ($userId, $pendingId, $latestSenderSubquery) {
                 $q->where('status_id', $pendingId)
-                  ->where(function ($negotiationGroup) use ($userId) {
-                      $negotiationGroup->whereHas('messages', function ($msgQ) use ($userId) {
-                          $msgQ->where('id', function ($latestMsgQ) {
-                              $latestMsgQ->selectRaw('max(id)')
-                                         ->from('rent_messages')
-                                         ->whereColumn('request_id', 'rent_requests.id');
-                          })->where('sender_id', $userId);
-                      })
-                      ->orWhere(function ($noMsgGroup) use ($userId) {
-                          $noMsgGroup->doesntHave('messages')
-                                     ->where('renter_id', $userId);
-                      });
-                  });
+                  ->whereRaw("($latestSenderSubquery) = ?", [$userId]);
             });
         }
 

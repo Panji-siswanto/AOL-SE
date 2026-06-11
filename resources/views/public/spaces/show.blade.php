@@ -76,6 +76,17 @@
         @php 
             $photos = $space->photos->count() > 0 ? $space->photos : $space->registration->photos; 
             $coverUrl = $photos->count() > 0 ? asset('storage/' . ($photos->where('is_primary', true)->first()->file_path ?? $photos->first()->file_path)) : '';
+            
+            // 🔥 NEW: Check globally if this space is already rented out
+            $ongoingId = \App\Models\Status::where('code', 'rnt_ongoing')->value('id');
+            $awaitingPaymentId = \App\Models\Status::where('code', 'rnt_awaiting_payment')->value('id');
+
+            $activeBooking = \App\Models\RentRequest::where('space_id', $space->id)
+                ->whereIn('status_id', [$ongoingId, $awaitingPaymentId])
+                ->first();
+
+            $isRentedByMe = $activeBooking && auth()->check() && $activeBooking->renter_id === auth()->id();
+            $isRentedByOther = $activeBooking && (!auth()->check() || $activeBooking->renter_id !== auth()->id());
         @endphp
 
         <div class="mb-10 bg-white p-6 md:p-8 rounded-[2rem] border border-gray-100 shadow-sm" x-data="spaceGallery('{{ $coverUrl }}')">
@@ -156,7 +167,38 @@
                         </div>
                     </div>
 
-                    @if(!auth()->check())
+                    {{-- 🔥 DYNAMIC RENT ACTIONS LOGIC --}}
+                    @if(auth()->check() && auth()->id() === $space->owner_id)
+                        <div class="bg-gray-50 border border-gray-200 p-6 rounded-2xl text-center mt-6">
+                            <span class="text-3xl mb-3 block">🏠</span>
+                            <h4 class="font-black text-gray-900 mb-1">Your Listing</h4>
+                            <p class="text-sm font-medium text-gray-600 mb-4">You are the host of this space. You cannot request to rent it.</p>
+                            <a href="{{ route('owner.spaces.show', $space->id) }}" class="w-full block bg-gray-900 hover:bg-black text-white py-3 rounded-xl font-bold transition-all shadow-sm text-center">
+                                Manage Space
+                            </a>
+                        </div>
+                    
+                    @elseif($isRentedByMe)
+                        <div class="bg-blue-50 border border-blue-100 p-6 rounded-2xl text-center mt-6">
+                            <span class="text-3xl mb-3 block">🔑</span>
+                            <h4 class="font-black text-gray-900 mb-1">You Are Renting This Space</h4>
+                            <p class="text-sm font-medium text-blue-800 mb-4">You currently have an ongoing contract or are awaiting payment for this space.</p>
+                            <a href="{{ route('rents.index') }}" class="w-full block bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold transition-all shadow-sm text-center">
+                                Manage My Rent
+                            </a>
+                        </div>
+
+                    @elseif($isRentedByOther)
+                        <div class="bg-gray-50 border border-gray-200 p-6 rounded-2xl text-center mt-6">
+                            <span class="text-3xl mb-3 block">⛔</span>
+                            <h4 class="font-black text-gray-900 mb-1">Currently Unavailable</h4>
+                            <p class="text-sm font-medium text-gray-500 mb-4">This space is currently rented out or booked by another user.</p>
+                            <button disabled class="w-full bg-gray-200 text-gray-400 py-3 rounded-xl font-bold cursor-not-allowed">
+                                Not Available
+                            </button>
+                        </div>
+
+                    @elseif(!auth()->check())
                         <div class="bg-gray-50 border border-gray-100 p-6 rounded-2xl text-center mt-6">
                             <span class="text-3xl mb-3 block">🔒</span>
                             <h4 class="font-black text-gray-900 mb-1">Login Required</h4>
@@ -165,6 +207,7 @@
                                 Log In to Continue
                             </button>
                         </div>
+                    
                     @elseif(!auth()->user()->is_verified)
                         <div class="bg-orange-50 border border-orange-100 p-6 rounded-2xl text-center mt-6">
                             <span class="text-3xl mb-3 block">🛡️</span>
@@ -174,15 +217,7 @@
                                 Verify Identity Now
                             </a>
                         </div>
-                    @elseif(auth()->id() === $space->owner_id)
-                        <div class="bg-gray-50 border border-gray-200 p-6 rounded-2xl text-center mt-6">
-                            <span class="text-3xl mb-3 block">🏠</span>
-                            <h4 class="font-black text-gray-900 mb-1">Your Listing</h4>
-                            <p class="text-sm font-medium text-gray-600 mb-4">You are the host of this space. You cannot request to rent it.</p>
-                            <a href="{{ route('owner.spaces.show', $space->id) }}" class="w-full block bg-gray-900 hover:bg-black text-white py-3 rounded-xl font-bold transition-all shadow-sm text-center">
-                                Manage Space
-                            </a>
-                        </div>
+                    
                     @elseif($space->has_active_request)
                         <div class="bg-teal-50 border border-teal-100 p-6 rounded-2xl text-center mt-6">
                             <span class="text-3xl mb-3 block">⏳</span>
@@ -192,6 +227,7 @@
                                 Track My Request
                             </a>
                         </div>
+                    
                     @else
                         <div class="pt-4 border-t border-gray-100">
                             <a href="{{ route('rents.create', $space->id) }}" class="block w-full bg-orange-500 hover:bg-orange-600 text-white text-center py-4 rounded-2xl font-black transition-all active:scale-95 shadow-lg shadow-orange-500/30">
